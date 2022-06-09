@@ -1,0 +1,3 @@
+is_global = true
+build_property.RootNamespace = Microsoft.Teams.Apps.EmployeeTraining
+build_property.ProjectDir = D:\MsTeamsProject\BaseRepo\Source\Microsoft.Teams.Apps.EmployeeTraining\

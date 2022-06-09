@@ -1,0 +1,255 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {}
+  },
+  "projects": {
+    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+        "projectName": "Microsoft.Teams.Apps.EmployeeTraining.Test",
+        "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+        "packagesPath": "C:\\Users\\jalal.bukhari\\.nuget\\packages\\",
+        "outputPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\jalal.bukhari\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netcoreapp3.1"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {},
+          "https://www.myget.org/F/efcore-mongodb/api/v3/index.json": {}
+        },
+        "frameworks": {
+          "netcoreapp3.1": {
+            "targetAlias": "netcoreapp3.1",
+            "projectReferences": {
+              "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
+                "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netcoreapp3.1": {
+          "targetAlias": "netcoreapp3.1",
+          "dependencies": {
+            "MSTest.TestAdapter": {
+              "target": "Package",
+              "version": "[2.1.0, )"
+            },
+            "MSTest.TestFramework": {
+              "target": "Package",
+              "version": "[2.1.0, )"
+            },
+            "Microsoft.Graph.Beta": {
+              "target": "Package",
+              "version": "[0.25.0-preview, )"
+            },
+            "Microsoft.NET.Test.Sdk": {
+              "target": "Package",
+              "version": "[16.5.0, )"
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.14.5, )"
+            },
+            "coverlet.collector": {
+              "target": "Package",
+              "version": "[1.2.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.200\\RuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
+        "projectName": "Microsoft.Teams.Apps.EmployeeTraining",
+        "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
+        "packagesPath": "C:\\Users\\jalal.bukhari\\.nuget\\packages\\",
+        "outputPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\jalal.bukhari\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "netcoreapp3.1"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {},
+          "https://www.myget.org/F/efcore-mongodb/api/v3/index.json": {}
+        },
+        "frameworks": {
+          "netcoreapp3.1": {
+            "targetAlias": "netcoreapp3.1",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "netcoreapp3.1": {
+          "targetAlias": "netcoreapp3.1",
+          "dependencies": {
+            "AdaptiveCards": {
+              "target": "Package",
+              "version": "[2.0.0, )"
+            },
+            "Microsoft.ApplicationInsights.AspNetCore": {
+              "target": "Package",
+              "version": "[2.14.0, )"
+            },
+            "Microsoft.AspNetCore.Authentication.AzureAD.UI": {
+              "target": "Package",
+              "version": "[3.1.6, )"
+            },
+            "Microsoft.AspNetCore.SpaServices.Extensions": {
+              "target": "Package",
+              "version": "[3.1.6, )"
+            },
+            "Microsoft.Azure.Cosmos.Table": {
+              "target": "Package",
+              "version": "[1.0.8, )"
+            },
+            "Microsoft.Azure.KeyVault": {
+              "target": "Package",
+              "version": "[3.0.5, )"
+            },
+            "Microsoft.Azure.Search": {
+              "target": "Package",
+              "version": "[10.1.0, )"
+            },
+            "Microsoft.Azure.Search.Data": {
+              "target": "Package",
+              "version": "[10.1.0, )"
+            },
+            "Microsoft.Azure.Search.Service": {
+              "target": "Package",
+              "version": "[10.1.0, )"
+            },
+            "Microsoft.Azure.Services.AppAuthentication": {
+              "target": "Package",
+              "version": "[1.6.0, )"
+            },
+            "Microsoft.Bot.Builder.Azure": {
+              "target": "Package",
+              "version": "[4.2.2, )"
+            },
+            "Microsoft.Bot.Builder.Integration.AspNet.Core": {
+              "target": "Package",
+              "version": "[4.9.4, )"
+            },
+            "Microsoft.CodeAnalysis.FxCopAnalyzers": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[3.0.0, )"
+            },
+            "Microsoft.Exchange.WebServices": {
+              "target": "Package",
+              "version": "[2.2.0, )"
+            },
+            "Microsoft.Extensions.Logging.ApplicationInsights": {
+              "target": "Package",
+              "version": "[2.14.0, )"
+            },
+            "Microsoft.Graph": {
+              "target": "Package",
+              "version": "[3.9.0, )"
+            },
+            "Microsoft.Graph.Beta": {
+              "target": "Package",
+              "version": "[0.25.0-preview, )"
+            },
+            "Microsoft.Identity.Client": {
+              "target": "Package",
+              "version": "[4.17.0, )"
+            },
+            "Microsoft.TypeScript.MSBuild": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[4.0.2, )"
+            },
+            "Microsoft.VisualStudio.Web.CodeGeneration.Design": {
+              "target": "Package",
+              "version": "[3.1.4, )"
+            },
+            "Polly": {
+              "target": "Package",
+              "version": "[7.2.1, )"
+            },
+            "Polly.Contrib.WaitAndRetry": {
+              "target": "Package",
+              "version": "[1.1.1, )"
+            },
+            "Polly.Extensions.Http": {
+              "target": "Package",
+              "version": "[3.0.0, )"
+            },
+            "StyleCop.Analyzers": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.1.118, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.200\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
