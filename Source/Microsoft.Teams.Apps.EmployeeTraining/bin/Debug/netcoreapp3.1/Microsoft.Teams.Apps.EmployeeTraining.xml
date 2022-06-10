@@ -1422,6 +1422,16 @@
             <param name="localizer">The current culture's string localizer.</param>
             <param name="userGraphHelper">Graph helper for operations related user.</param>
         </member>
+        <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CreateUpdate">
+            <summary>
+            Instance create appointemnt or delete appointment;
+            </summary>
+        </member>
+        <member name="P:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.EventAppointment">
+            <summary>
+            Gets or sets appointemnt;
+            </summary>
+        </member>
         <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CancelEventAsync(System.String,System.String,System.String,Microsoft.ApplicationInsights.TelemetryClient)">
             <summary>
             Cancel calendar event.
@@ -1503,6 +1513,15 @@
             <param name="telemetryClient">Telementry.</param>
             <param name="service">Exchange service that will be used to delete event.</param>
             <param name="eventId">Id of the event that need to me deleted.</param>
+        </member>
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.TeamAppointment(Microsoft.Graph.Event,Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CreateUpdate,Microsoft.Exchange.WebServices.Data.ExchangeService,System.String)">
+            <summary>
+            Creates or updates an appointment.
+            </summary>
+            <param name="teamsEvent">Detailsof the event</param>
+            <param name="createUpdate"> Enum to check if the appointment should be created or updated</param>
+            <param name="service">Exchange service that will be used to delete event.</param>
+            <param name="idOrBody"> For u[dating appointment an ID will be passed and for creating appointment body will be passed</param>
         </member>
         <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventWorkflowHelper">
             <summary>

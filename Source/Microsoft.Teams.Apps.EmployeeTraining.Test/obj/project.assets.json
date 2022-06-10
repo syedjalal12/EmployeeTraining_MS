@@ -12438,19 +12438,24 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\jalal.bukhari\\.nuget\\packages\\": {}
+    "C:\\Users\\sadeed.ullahkhan\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+      "projectUniqueName": "D:\\SystemLtd\\Repos\\EmployeeTraining_MS\\EmployeeTraining_MS\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
       "projectName": "Microsoft.Teams.Apps.EmployeeTraining.Test",
-      "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
-      "packagesPath": "C:\\Users\\jalal.bukhari\\.nuget\\packages\\",
-      "outputPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\obj\\",
+      "projectPath": "D:\\SystemLtd\\Repos\\EmployeeTraining_MS\\EmployeeTraining_MS\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+      "packagesPath": "C:\\Users\\sadeed.ullahkhan\\.nuget\\packages\\",
+      "outputPath": "D:\\SystemLtd\\Repos\\EmployeeTraining_MS\\EmployeeTraining_MS\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "C:\\Users\\jalal.bukhari\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\sadeed.ullahkhan\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -12458,15 +12463,14 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-        "https://api.nuget.org/v3/index.json": {},
-        "https://www.myget.org/F/efcore-mongodb/api/v3/index.json": {}
+        "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "netcoreapp3.1": {
           "targetAlias": "netcoreapp3.1",
           "projectReferences": {
-            "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
-              "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj"
+            "D:\\SystemLtd\\Repos\\EmployeeTraining_MS\\EmployeeTraining_MS\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
+              "projectPath": "D:\\SystemLtd\\Repos\\EmployeeTraining_MS\\EmployeeTraining_MS\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj"
             }
           }
         }
@@ -12521,7 +12525,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.200\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\6.0.300\\RuntimeIdentifierGraph.json"
       }
     }
   },
