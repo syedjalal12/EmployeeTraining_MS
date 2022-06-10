@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {}
+    "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {}
   },
   "projects": {
-    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {
+    "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+        "projectUniqueName": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
         "projectName": "Microsoft.Teams.Apps.EmployeeTraining.Test",
-        "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+        "projectPath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
         "packagesPath": "C:\\Users\\jalal.bukhari\\.nuget\\packages\\",
-        "outputPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\obj\\",
+        "outputPath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\jalal.bukhari\\AppData\\Roaming\\NuGet\\NuGet.Config",
@@ -29,8 +29,8 @@
           "netcoreapp3.1": {
             "targetAlias": "netcoreapp3.1",
             "projectReferences": {
-              "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
-                "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj"
+              "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
+                "projectPath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj"
               }
             }
           }
@@ -89,14 +89,14 @@
         }
       }
     },
-    "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
+    "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
+        "projectUniqueName": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
         "projectName": "Microsoft.Teams.Apps.EmployeeTraining",
-        "projectPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
+        "projectPath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
         "packagesPath": "C:\\Users\\jalal.bukhari\\.nuget\\packages\\",
-        "outputPath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\obj\\",
+        "outputPath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\jalal.bukhari\\AppData\\Roaming\\NuGet\\NuGet.Config",

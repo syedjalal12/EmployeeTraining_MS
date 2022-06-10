@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "KAbI6xKVhFYzMqILagnX1B6puGTW7NAJDzhQcqt9gT35Zm9MkJpNryKMqsxbY3yG4+z6hP0ZegWtdQ0zzqkngg==",
+  "dgSpecHash": "D+msCPUzn754S1shLzqiKSV3qrlt9zA7RMvevJwoCsRBskywvDQDvuG04k19eAHNsUQ2r8GC8+qmqVLrOELB9w==",
   "success": true,
-  "projectFilePath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
+  "projectFilePath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining\\Microsoft.Teams.Apps.EmployeeTraining.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\jalal.bukhari\\.nuget\\packages\\adaptivecards\\2.0.0\\adaptivecards.2.0.0.nupkg.sha512",
     "C:\\Users\\jalal.bukhari\\.nuget\\packages\\microsoft.applicationinsights\\2.14.0\\microsoft.applicationinsights.2.14.0.nupkg.sha512",

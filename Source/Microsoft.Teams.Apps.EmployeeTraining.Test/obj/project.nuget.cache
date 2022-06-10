@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "neEWl4c0FUNsk98PVBF8Gjw7ElSn5BCIEJen4ZBZEBuy5mz+JqJmO1qve5+FSJM//cKZYTInw2pqviH7s5B9Pw==",
+  "dgSpecHash": "SLOLWMQg4eMN9XvHOWBWFsqrkfsSGI6HazJx6jfnafd9zd+Tq2pFGEoYVzrZGoTBNxx1jqWa6MszmhdCJtAfIQ==",
   "success": true,
-  "projectFilePath": "D:\\MsTeamsProject\\BaseRepo\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
+  "projectFilePath": "D:\\EmployeeTraining_MS\\Source\\Source\\Microsoft.Teams.Apps.EmployeeTraining.Test\\Microsoft.Teams.Apps.EmployeeTraining.Test.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\jalal.bukhari\\.nuget\\packages\\adaptivecards\\2.0.0\\adaptivecards.2.0.0.nupkg.sha512",
     "C:\\Users\\jalal.bukhari\\.nuget\\packages\\castle.core\\4.4.0\\castle.core.4.4.0.nupkg.sha512",

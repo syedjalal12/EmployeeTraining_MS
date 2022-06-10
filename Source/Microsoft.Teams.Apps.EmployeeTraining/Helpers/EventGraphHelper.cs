@@ -64,10 +64,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// </summary>
         private readonly IUserGraphHelper userGraphHelper;
 
-        ///// <summary>
-        ///// Instance onPremises user;
-        ///// </summary>
-        // private bool onPremisesSyncEnabled;
+        /// <summary>
+        /// Instance onPremises user;
+        /// </summary>
+        private bool isCloudUser;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventGraphHelper"/> class.
@@ -109,6 +109,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     return await tokenAcquisitionHelper.GetApplicationAccessTokenAsync();
                 });
 
+                this.isCloudUser = this.delegatedGraphClient.Me.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Equals(null);
+
                 // this.onPremisesSyncEnabled = this.delegatedGraphClient.Users.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Where(x => x.Id == userObjectId).SingleOrDefault().OnPremisesSyncEnabled == null ? this.onPremisesSyncEnabled = false : true;
             }
         }
@@ -137,31 +139,36 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>True if event cancellation is successful.</returns>
         public async Task<bool> CancelEventAsync(string eventGraphId, string createdByUserId, string comment, TelemetryClient telemetryClient)
         {
-            try
-            {
-                telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request started.");
-                await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId]
-                    .Cancel(comment).Request().PostAsync();
-                telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
-                return true;
-            }
-            catch
+            if (this.isCloudUser)
             {
                 try
                 {
-                    var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                    string userPrincipal = user.UserPrincipalName;
-
-                    ExchangeService service = this.Service(userPrincipal);
-
-                    ItemId eventId = eventGraphId;
-
-                    return this.EWS_CRUD_Event(telemetryClient, service, eventId);
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request started.");
+                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId]
+                        .Cancel(comment).Request().PostAsync();
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
+                    return true;
                 }
                 catch (Exception ex)
                 {
                     return false;
                 }
+            }
+
+            try
+            {
+                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+                string userPrincipal = user.UserPrincipalName;
+
+                ExchangeService service = this.Service(userPrincipal);
+
+                ItemId eventId = eventGraphId;
+
+                return this.EWS_CRUD_Event(telemetryClient, service, eventId);
+            }
+            catch (Exception ex)
+            {
+                return false;
             }
         }
 
@@ -173,11 +180,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>Created event details.</returns>
         public async Task<Event> CreateEventAsync(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
-            eventEntity = eventEntity ??
-                throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
-
-            telemetryClient.TrackEvent($"registered attendees {eventEntity.RegisteredAttendees}");
-            telemetryClient.TrackEvent($"auto registered attendees {eventEntity.AutoRegisteredAttendees}");
+            eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
             var teamsEvent = new Event
             {
@@ -202,9 +205,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams,
                 OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown,
             };
-
-            telemetryClient.TrackEvent($"teamsEvent completed.");
-
             teamsEvent.Start = new DateTimeTimeZone
             {
                 DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
@@ -216,44 +216,31 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
                 TimeZone = TimeZoneInfo.Utc.Id,
             };
-
             if (eventEntity.NumberOfOccurrences > 1)
             {
                 // Create recurring event.
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            telemetryClient.TrackEvent($"delegatedGraphClient request started.");
-
-            try
+            if (this.isCloudUser)
             {
-                return await this.delegatedGraphClient.Me.Events.Request()
-                .Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
+                return await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
             }
-            catch (Exception ex)
+            else
             {
-                string myDecodedString = string.Empty;
-                try
+                string myDecodedString;
+                var onlineMeeting = new OnlineMeeting
                 {
-                    var onlineMeeting = new OnlineMeeting
-                    {
-                        StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
-                        EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
-                        Subject = "User Token Meeting",
-                    };
+                    StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
+                    EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
+                    Subject = "User Token Meeting",
+                };
 
-                    var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-
-                    telemetryClient.TrackEvent($"{meeting.JoinInformation.Content}");
-                    myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
-                }
-                catch (Exception execption)
-                {
-                    telemetryClient.TrackEvent($"{execption.StackTrace}");
-                }
+                var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
+                telemetryClient.TrackEvent($"{meeting.JoinInformation.Content}");
+                myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
 
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-
                 string userPrincipal = user.UserPrincipalName;
 
                 ExchangeService service = this.Service(userPrincipal);
@@ -271,8 +258,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>Updated event details.</returns>
         public async Task<Event> UpdateEventAsync(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
-            eventEntity = eventEntity ??
-                throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
+            eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
             var teamsEvent = new Event
             {
@@ -294,7 +280,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams,
                 OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown,
             };
-
             teamsEvent.Start = new DateTimeTimeZone
             {
                 DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
@@ -306,33 +291,25 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
                 TimeZone = TimeZoneInfo.Utc.Id,
             };
-
             if (eventEntity.NumberOfOccurrences > 1)
             {
                 // Create recurring event.
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            telemetryClient.TrackEvent($"applicationGraphClient update request started.");
-
-            telemetryClient.TrackEvent($"graph event id: {eventEntity.GraphEventId}");
-
-            try
+            if (this.isCloudUser)
             {
-                return await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request()
-                 .Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
+                return await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
             }
-            catch (Exception ex)
-            {
-                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                string userPrincipal = user.UserPrincipalName;
 
-                ItemId eventId = eventEntity.GraphEventId;
-                ExchangeService service = this.Service(userPrincipal);
-                this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
+            var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+            string userPrincipal = user.UserPrincipalName;
 
-                return teamsEvent;
-            }
+            ItemId eventId = eventEntity.GraphEventId;
+            ExchangeService service = this.Service(userPrincipal);
+            this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
+
+            return teamsEvent;
         }
 
         /// <summary>

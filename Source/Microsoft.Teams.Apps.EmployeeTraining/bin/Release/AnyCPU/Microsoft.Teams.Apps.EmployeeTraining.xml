@@ -1413,6 +1413,11 @@
             Graph helper for operations related user.
             </summary>
         </member>
+        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.isCloudUser">
+            <summary>
+            Instance onPremises user;
+            </summary>
+        </member>
         <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.#ctor(Microsoft.Teams.Apps.EmployeeTraining.Helpers.ITokenAcquisitionHelper,Microsoft.AspNetCore.Http.IHttpContextAccessor,Microsoft.Extensions.Localization.IStringLocalizer{Microsoft.Teams.Apps.EmployeeTraining.Strings},Microsoft.Teams.Apps.EmployeeTraining.Helpers.IUserGraphHelper)">
             <summary>
             Initializes a new instance of the <see cref="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper"/> class.
