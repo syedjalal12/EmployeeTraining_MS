@@ -17,8 +17,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
     using Microsoft.AspNetCore.Http;
     using Microsoft.Exchange.WebServices.Data;
     using Microsoft.Extensions.Localization;
+    using Microsoft.Extensions.Options;
     using Microsoft.Graph;
     using Microsoft.Teams.Apps.EmployeeTraining.Models;
+    using Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration;
 #pragma warning disable SA1135 // Referring BETA package of MS Graph SDK.
     using Beta = BetaLib.Microsoft.Graph;
 #pragma warning restore SA1135 // Referring BETA package of MS Graph SDK.
@@ -32,12 +34,17 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <summary>
         /// Instance service email;
         /// </summary>
-        private readonly string serviceEmail = "admin.service.account@qatartest309.com";
+        private readonly string serviceEmail;
 
         /// <summary>
         /// Instance service password;
         /// </summary>
-        private readonly string servicePass = "P@$$w0rD";
+        private readonly string servicePass;
+
+        /// <summary>
+        /// Represents a set of key/value application configuration properties for Azure.
+        /// </summary>
+        private readonly IOptions<AzureVaultSettings> azureVaultOptions;
 
         /// <summary>
         /// Instance of graph service client for delegated requests.
@@ -76,15 +83,20 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="httpContextAccessor">HTTP context accessor for getting user claims.</param>
         /// <param name="localizer">The current culture's string localizer.</param>
         /// <param name="userGraphHelper">Graph helper for operations related user.</param>
+        /// <param name="azureVaultOptions">A set of key/value application configuration properties for Key Vault.</param>
         public EventGraphHelper(
             ITokenAcquisitionHelper tokenAcquisitionHelper,
             IHttpContextAccessor httpContextAccessor,
             IStringLocalizer<Strings> localizer,
-            IUserGraphHelper userGraphHelper)
+            IUserGraphHelper userGraphHelper,
+            IOptions<AzureVaultSettings> azureVaultOptions)
         {
             this.localizer = localizer;
             this.userGraphHelper = userGraphHelper;
             httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+            this.azureVaultOptions = azureVaultOptions ?? throw new ArgumentNullException(nameof(azureVaultOptions));
+            this.serviceEmail = this.azureVaultOptions.Value.ServiceEmail;
+            this.servicePass = this.azureVaultOptions.Value.ServicePassword;
 
             var oidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
             var userObjectId = httpContextAccessor.HttpContext.User.Claims?

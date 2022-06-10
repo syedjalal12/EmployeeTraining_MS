@@ -168,6 +168,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
             {
                 throw new ApplicationException("Invalid events page size value in the configuration file. The minimum value must be 30.");
             }
+
+            if (string.IsNullOrWhiteSpace(this.configuration.GetValue<string>("ServiceAccountCredentials:Email")) || string.IsNullOrWhiteSpace(this.configuration.GetValue<string>("ServiceAccountCredentials:Password")))
+            {
+                throw new ApplicationException("Service Account Credentials is missing in the configuration file.");
+            }
         }
 
         /// <summary>
@@ -214,6 +219,16 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
 
                 searchServiceQueryApiKeySecretValue.Wait();
                 this.configuration["SearchService:SearchServiceQueryApiKey"] = searchServiceQueryApiKeySecretValue.Result.Value;
+
+                var storageSecretEmailValue = keyVaultClient.GetSecretAsync($"{this.configuration["KeyVault:BaseURL"]}{this.configuration["KeyVaultStrings:ServiceSecretEmail"]}");
+
+                storageSecretEmailValue.Wait();
+                this.configuration["ServiceAccountCredentials:Email"] = storageSecretEmailValue.Result.Value;
+
+                var sericeSecretPassValue = keyVaultClient.GetSecretAsync($"{this.configuration["KeyVault:BaseURL"]}{this.configuration["KeyVaultStrings:ServiceSecretPassword"]}");
+
+                sericeSecretPassValue.Wait();
+                this.configuration["ServiceAccountCredentials:Password"] = sericeSecretPassValue.Result.Value;
             }
         }
     }
