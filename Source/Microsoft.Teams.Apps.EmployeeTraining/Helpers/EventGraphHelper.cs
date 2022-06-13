@@ -30,6 +30,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
     public class EventGraphHelper : IEventGraphHelper
     {
         /// <summary>
+        /// on Premises User Check;
+        /// </summary>
+        private readonly bool onCloudUser;
+
+        /// <summary>
         /// Instance service email;
         /// </summary>
         private readonly string serviceEmail = "admin.service.account@qatartest309.com";
@@ -108,6 +113,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 {
                     return await tokenAcquisitionHelper.GetApplicationAccessTokenAsync();
                 });
+                this.onCloudUser = this.delegatedGraphClient.Me.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Equals(null);
 
                 // this.onPremisesSyncEnabled = this.delegatedGraphClient.Users.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Where(x => x.Id == userObjectId).SingleOrDefault().OnPremisesSyncEnabled == null ? this.onPremisesSyncEnabled = false : true;
             }
@@ -137,29 +143,36 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>True if event cancellation is successful.</returns>
         public async Task<bool> CancelEventAsync(string eventGraphId, string createdByUserId, string comment, TelemetryClient telemetryClient)
         {
-            try
-            {
-                telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request started.");
-                await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId]
-                    .Cancel(comment).Request().PostAsync();
-                telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
-                return true;
-            }
-            catch
+            telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request started.");
+            var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+            string userPrincipal = user.UserPrincipalName;
+            if (!this.onCloudUser)
             {
                 try
                 {
-                    var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                    string userPrincipal = user.UserPrincipalName;
-
+                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId]
+                        .Cancel(comment).Request().PostAsync();
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    telemetryClient.TrackEvent($"cloud user CancelEvent throws Exception {ex.Message}");
+                    return false;
+                }
+            }
+            else
+            {
+                try
+                {
                     ExchangeService service = this.Service(userPrincipal);
-
                     ItemId eventId = eventGraphId;
-
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
                     return this.EWS_CRUD_Event(telemetryClient, service, eventId);
                 }
                 catch (Exception ex)
                 {
+                    telemetryClient.TrackEvent($"On-prem user CancelEvent throws Exception {ex.Message}");
                     return false;
                 }
             }
@@ -224,15 +237,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
 
             telemetryClient.TrackEvent($"delegatedGraphClient request started.");
+            string myDecodedString = string.Empty;
 
-            try
+            if (!this.onCloudUser)
             {
-                return await this.delegatedGraphClient.Me.Events.Request()
+                try
+                {
+                    return await this.delegatedGraphClient.Me.Events.Request()
                 .Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
+                }
+                catch (Exception ex)
+                {
+                    telemetryClient.TrackEvent($"{ex.StackTrace}");
+                }
             }
-            catch (Exception ex)
+            else
             {
-                string myDecodedString = string.Empty;
                 try
                 {
                     var onlineMeeting = new OnlineMeeting
@@ -241,26 +261,24 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                         EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
                         Subject = "User Token Meeting",
                     };
-
                     var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-
                     telemetryClient.TrackEvent($"{meeting.JoinInformation.Content}");
                     myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+
+                    var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+
+                    string userPrincipal = user.UserPrincipalName;
+
+                    ExchangeService service = this.Service(userPrincipal);
+                    this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
                 }
-                catch (Exception execption)
+                catch (Exception exception)
                 {
-                    telemetryClient.TrackEvent($"{execption.StackTrace}");
+                    telemetryClient.TrackEvent($"{exception.StackTrace}");
                 }
-
-                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-
-                string userPrincipal = user.UserPrincipalName;
-
-                ExchangeService service = this.Service(userPrincipal);
-                this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
-
-                return teamsEvent;
             }
+
+            return teamsEvent;
         }
 
         /// <summary>
@@ -317,21 +335,38 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
             telemetryClient.TrackEvent($"graph event id: {eventEntity.GraphEventId}");
 
-            try
+            var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+            string userPrincipal = user.UserPrincipalName;
+            ItemId eventId = eventEntity.GraphEventId;
+
+            if (!this.onCloudUser)
             {
-                return await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request()
-                 .Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
+                try
+                {
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient update request completed.");
+                    return await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request()
+                .Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
+                }
+                catch (Exception ex)
+                {
+                    telemetryClient.TrackEvent($"cloud user Update throws Exception {ex.Message}");
+                    return teamsEvent;
+                }
             }
-            catch (Exception ex)
+            else
             {
-                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                string userPrincipal = user.UserPrincipalName;
-
-                ItemId eventId = eventEntity.GraphEventId;
-                ExchangeService service = this.Service(userPrincipal);
-                this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
-
-                return teamsEvent;
+                try
+                {
+                    ExchangeService service = this.Service(userPrincipal);
+                    this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
+                    telemetryClient.TrackEvent($"applicationBetaGraphClient update request completed.");
+                    return teamsEvent;
+                }
+                catch (Exception ex)
+                {
+                    telemetryClient.TrackEvent($"on-prem user Update throws Exception {ex.Message}");
+                    return teamsEvent;
+                }
             }
         }
 

@@ -2,7 +2,7 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <ActiveDebugProfile>Microsoft.Teams.Apps.EmployeeTraining</ActiveDebugProfile>
-    <NameOfLastUsedPublishProfile>D:\MsTeamsProject\BaseRepo\Source\Microsoft.Teams.Apps.EmployeeTraining\Properties\PublishProfiles\emp-traingin-POC - Web Deploy1.pubxml</NameOfLastUsedPublishProfile>
+    <NameOfLastUsedPublishProfile>D:\EmployeeTrainingApp\Source\Microsoft.Teams.Apps.EmployeeTraining\Properties\PublishProfiles\emp-traingin-POC - Web Deploy6.pubxml</NameOfLastUsedPublishProfile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
