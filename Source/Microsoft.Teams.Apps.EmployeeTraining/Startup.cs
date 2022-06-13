@@ -219,6 +219,16 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
 
                 searchServiceQueryApiKeySecretValue.Wait();
                 this.configuration["SearchService:SearchServiceQueryApiKey"] = searchServiceQueryApiKeySecretValue.Result.Value;
+
+                var storageSecretEmailValue = keyVaultClient.GetSecretAsync($"{this.configuration["KeyVault:BaseURL"]}{this.configuration["KeyVaultStrings:ServiceSecretEmail"]}");
+
+                storageSecretEmailValue.Wait();
+                this.configuration["ServiceAccount:Username"] = storageSecretEmailValue.Result.Value;
+
+                var sericeSecretPassValue = keyVaultClient.GetSecretAsync($"{this.configuration["KeyVault:BaseURL"]}{this.configuration["KeyVaultStrings:ServiceSecretPassword"]}");
+
+                sericeSecretPassValue.Wait();
+                this.configuration["ServiceAccount:Password"] = sericeSecretPassValue.Result.Value;
             }
         }
     }
