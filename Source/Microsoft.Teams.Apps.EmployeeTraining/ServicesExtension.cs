@@ -69,6 +69,12 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
                 options.GraphScope = configuration.GetValue<string>("AzureAd:GraphScope");
             });
 
+            services.Configure<AzureVaultSettings>(options =>
+            {
+                options.ServiceEmail = configuration.GetValue<string>("ServiceAccount:Username");
+                options.ServicePassword = configuration.GetValue<string>("ServiceAccount:Password");
+            });
+
             services.Configure<TelemetrySetting>(options =>
             {
                 options.InstrumentationKey = configuration.GetValue<string>("ApplicationInsights:InstrumentationKey");

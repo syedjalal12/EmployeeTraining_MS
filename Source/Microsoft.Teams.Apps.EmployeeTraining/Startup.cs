@@ -168,6 +168,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
             {
                 throw new ApplicationException("Invalid events page size value in the configuration file. The minimum value must be 30.");
             }
+
+            if (string.IsNullOrWhiteSpace(this.configuration.GetValue<string>("ServiceAccount:Username")) || string.IsNullOrWhiteSpace(this.configuration.GetValue<string>("ServiceAccount:Password")))
+            {
+                throw new ApplicationException("Service Account Credentials is missing in the configuration file.");
+            }
         }
 
         /// <summary>

@@ -1388,6 +1388,11 @@
             Instance service password;
             </summary>
         </member>
+        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.azureVaultOptions">
+            <summary>
+            Represents a set of key/value application configuration properties for Azure.
+            </summary>
+        </member>
         <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.delegatedGraphClient">
             <summary>
             Instance of graph service client for delegated requests.
@@ -1413,7 +1418,12 @@
             Graph helper for operations related user.
             </summary>
         </member>
-        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.#ctor(Microsoft.Teams.Apps.EmployeeTraining.Helpers.ITokenAcquisitionHelper,Microsoft.AspNetCore.Http.IHttpContextAccessor,Microsoft.Extensions.Localization.IStringLocalizer{Microsoft.Teams.Apps.EmployeeTraining.Strings},Microsoft.Teams.Apps.EmployeeTraining.Helpers.IUserGraphHelper)">
+        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.isCloudUser">
+            <summary>
+            Instance onPremises user;
+            </summary>
+        </member>
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.#ctor(Microsoft.Teams.Apps.EmployeeTraining.Helpers.ITokenAcquisitionHelper,Microsoft.AspNetCore.Http.IHttpContextAccessor,Microsoft.Extensions.Localization.IStringLocalizer{Microsoft.Teams.Apps.EmployeeTraining.Strings},Microsoft.Teams.Apps.EmployeeTraining.Helpers.IUserGraphHelper,Microsoft.Extensions.Options.IOptions{Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.AzureVaultSettings})">
             <summary>
             Initializes a new instance of the <see cref="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper"/> class.
             </summary>
@@ -1421,6 +1431,7 @@
             <param name="httpContextAccessor">HTTP context accessor for getting user claims.</param>
             <param name="localizer">The current culture's string localizer.</param>
             <param name="userGraphHelper">Graph helper for operations related user.</param>
+            <param name="azureVaultOptions">A set of key/value application configuration properties for Key Vault.</param>
         </member>
         <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CreateUpdate">
             <summary>
@@ -2791,6 +2802,21 @@
         <member name="P:Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.AzureSettings.GraphScope">
             <summary>
             Gets or sets Graph API scope.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.AzureVaultSettings">
+            <summary>
+            A class which helps to provide Azure Vault settings for application.
+            </summary>
+        </member>
+        <member name="P:Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.AzureVaultSettings.ServiceEmail">
+            <summary>
+            Gets or sets Service Email of application.
+            </summary>
+        </member>
+        <member name="P:Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.AzureVaultSettings.ServicePassword">
+            <summary>
+            Gets or sets Service Password of application.
             </summary>
         </member>
         <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Models.Configuration.EmployeeTrainingActivityHandlerOptions">
