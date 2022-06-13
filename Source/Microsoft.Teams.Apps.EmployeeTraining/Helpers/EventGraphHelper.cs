@@ -222,13 +222,14 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
+            string myDecodedString = string.Empty;
+
             if (this.isCloudUser)
             {
                 return await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
             }
             else
             {
-                string myDecodedString;
                 var onlineMeeting = new OnlineMeeting
                 {
                     StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
@@ -245,9 +246,9 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                 ExchangeService service = this.Service(userPrincipal);
                 this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
-
-                return teamsEvent;
             }
+
+            return teamsEvent;
         }
 
         /// <summary>
