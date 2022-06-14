@@ -34,12 +34,12 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <summary>
         /// Instance service email;
         /// </summary>
-        private readonly string serviceEmail; // = "admin.service.account@qatartest309.com";
+        private readonly string serviceEmail;
 
         /// <summary>
         /// Instance service password;
         /// </summary>
-        private readonly string servicePass; // = "P@$$w0rD";
+        private readonly string servicePass;
 
         /// <summary>
         /// Represents a set of key/value application configuration properties for Azure.
@@ -74,7 +74,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <summary>
         /// Instance onPremises user;
         /// </summary>
-        private bool isCloudUser;
+        private bool isOnPremUser;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="EventGraphHelper"/> class.
@@ -121,9 +121,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     return await tokenAcquisitionHelper.GetApplicationAccessTokenAsync();
                 });
 
-                this.isCloudUser = this.delegatedGraphClient.Me.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Equals(null);
-
-                // this.onPremisesSyncEnabled = this.delegatedGraphClient.Users.Request().Select("onPremisesSyncEnabled").GetAsync().Result.Where(x => x.Id == userObjectId).SingleOrDefault().OnPremisesSyncEnabled == null ? this.onPremisesSyncEnabled = false : true;
+                this.isOnPremUser = this.delegatedGraphClient.Me.Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
             }
         }
 
@@ -151,36 +149,35 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>True if event cancellation is successful.</returns>
         public async Task<bool> CancelEventAsync(string eventGraphId, string createdByUserId, string comment, TelemetryClient telemetryClient)
         {
-            if (this.isCloudUser)
+            if (this.isOnPremUser)
             {
                 try
                 {
-                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request started.");
-                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId]
-                        .Cancel(comment).Request().PostAsync();
-                    telemetryClient.TrackEvent($"applicationBetaGraphClient cancel request completed.");
-                    return true;
+                    var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+                    string userPrincipal = user.UserPrincipalName;
+
+                    ExchangeService service = this.Service(userPrincipal);
+
+                    ItemId eventId = eventGraphId;
+
+                    return this.EWS_CRUD_Event(telemetryClient, service, eventId);
                 }
                 catch (Exception ex)
                 {
                     return false;
                 }
             }
-
-            try
+            else
             {
-                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                string userPrincipal = user.UserPrincipalName;
-
-                ExchangeService service = this.Service(userPrincipal);
-
-                ItemId eventId = eventGraphId;
-
-                return this.EWS_CRUD_Event(telemetryClient, service, eventId);
-            }
-            catch (Exception ex)
-            {
-                return false;
+                try
+                {
+                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    return false;
+                }
             }
         }
 
@@ -234,14 +231,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            string myDecodedString = string.Empty;
+            if (this.isOnPremUser)
+            {
+                string myDecodedString;
 
-            if (this.isCloudUser)
-            {
-                return await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
-            }
-            else
-            {
                 var onlineMeeting = new OnlineMeeting
                 {
                     StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
@@ -250,7 +243,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 };
 
                 var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-                telemetryClient.TrackEvent($"{meeting.JoinInformation.Content}");
                 myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
 
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
@@ -258,6 +250,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                 ExchangeService service = this.Service(userPrincipal);
                 this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
+            }
+            else
+            {
+                return await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
             }
 
             return teamsEvent;
@@ -271,7 +267,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>Updated event details.</returns>
         public async Task<Event> UpdateEventAsync(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
-            eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
+            eventEntity = eventEntity ??
+                throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
             var teamsEvent = new Event
             {
@@ -306,21 +303,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             };
             if (eventEntity.NumberOfOccurrences > 1)
             {
-                // Create recurring event.
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            if (this.isCloudUser)
+            if (this.isOnPremUser)
+            {
+                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+                string userPrincipal = user.UserPrincipalName;
+
+                ItemId eventId = eventEntity.GraphEventId;
+                ExchangeService service = this.Service(userPrincipal);
+                this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
+            }
+            else
             {
                 return await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
             }
-
-            var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-            string userPrincipal = user.UserPrincipalName;
-
-            ItemId eventId = eventEntity.GraphEventId;
-            ExchangeService service = this.Service(userPrincipal);
-            this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
 
             return teamsEvent;
         }
@@ -369,6 +367,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             if (!string.IsNullOrEmpty(eventEntity.RegisteredAttendees))
             {
                 var registeredAttendeesList = eventEntity.RegisteredAttendees.Trim().Split(";");
+
                 if (registeredAttendeesList.Any())
                 {
                     var userProfiles = await this.userGraphHelper.GetUsersAsync(registeredAttendeesList);
@@ -391,6 +390,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             if (!string.IsNullOrEmpty(eventEntity.AutoRegisteredAttendees))
             {
                 var autoRegisteredAttendeesList = eventEntity.AutoRegisteredAttendees.Trim().Split(";");
+
                 if (autoRegisteredAttendeesList.Any())
                 {
                     var userProfiles = await this.userGraphHelper.GetUsersAsync(autoRegisteredAttendeesList);
@@ -477,7 +477,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"{ex.Message}");
                 return null;
             }
         }
@@ -491,15 +490,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="eventId">Id of the event that need to me modified.</param>
         private void EWS_CRUD_Event(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, ItemId eventId)
         {
-            try
-            {
-                CreateUpdate updateEvent = CreateUpdate.UpdateAppointment;
-                Appointment appointment = this.TeamAppointment(teamsEvent, updateEvent, service, eventId.ToString());
-            }
-            catch (Exception ex)
-            {
-                telemetryClient.TrackEvent($"{ex.Message}");
-            }
+            CreateUpdate updateEvent = CreateUpdate.UpdateAppointment;
+            Appointment appointment = this.TeamAppointment(teamsEvent, updateEvent, service, eventId.ToString());
         }
 
         /// <summary>
@@ -518,7 +510,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"{ex.Message}");
                 return false;
             }
         }
@@ -571,7 +562,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             else
             {
                 SendInvitationsOrCancellationsMode mode = this.EventAppointment.IsMeeting ?
-                   SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy : SendInvitationsOrCancellationsMode.SendToNone;
+                SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy : SendInvitationsOrCancellationsMode.SendToNone;
 
                 this.EventAppointment.Update(ConflictResolutionMode.AlwaysOverwrite);
             }

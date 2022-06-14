@@ -1418,7 +1418,7 @@
             Graph helper for operations related user.
             </summary>
         </member>
-        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.isCloudUser">
+        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.isOnPremUser">
             <summary>
             Instance onPremises user;
             </summary>
