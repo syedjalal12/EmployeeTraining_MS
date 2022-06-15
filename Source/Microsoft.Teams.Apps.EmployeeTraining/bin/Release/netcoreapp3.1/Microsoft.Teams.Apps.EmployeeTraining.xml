@@ -1491,7 +1491,7 @@
             <param name="eventEntity">The event details</param>
             <returns>Returns </returns>
         </member>
-        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.Service(System.String)">
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.Service(System.String,Microsoft.ApplicationInsights.TelemetryClient)">
             <summary>
             Create teams service.
             </summary>
@@ -1508,15 +1508,6 @@
             <param name="body">Body of the event.</param>
             <returns>Id of the event created</returns>
         </member>
-        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.EWS_CRUD_Event(Microsoft.ApplicationInsights.TelemetryClient,Microsoft.Exchange.WebServices.Data.ExchangeService,Microsoft.Graph.Event,Microsoft.Exchange.WebServices.Data.ItemId)">
-            <summary>
-            Updates the event.
-            </summary>
-            <param name="telemetryClient">Telementry.</param>
-            <param name="service">Exchange service that will be used to update event.</param>
-            <param name="teamsEvent">Details that will updated in the event</param>
-            <param name="eventId">Id of the event that need to me modified.</param>
-        </member>
         <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.EWS_CRUD_Event(Microsoft.ApplicationInsights.TelemetryClient,Microsoft.Exchange.WebServices.Data.ExchangeService,Microsoft.Exchange.WebServices.Data.ItemId)">
             <summary>
             Deletes the event.
@@ -1525,14 +1516,21 @@
             <param name="service">Exchange service that will be used to delete event.</param>
             <param name="eventId">Id of the event that need to me deleted.</param>
         </member>
-        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.TeamAppointment(Microsoft.Graph.Event,Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CreateUpdate,Microsoft.Exchange.WebServices.Data.ExchangeService,System.String)">
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.CreateEWSAppointment(Microsoft.Graph.Event,Microsoft.Exchange.WebServices.Data.ExchangeService,System.String,Microsoft.ApplicationInsights.TelemetryClient)">
             <summary>
-            Creates or updates an appointment.
+            Creates an appointment.
             </summary>
             <param name="teamsEvent">Detailsof the event</param>
-            <param name="createUpdate"> Enum to check if the appointment should be created or updated</param>
             <param name="service">Exchange service that will be used to delete event.</param>
-            <param name="idOrBody"> For u[dating appointment an ID will be passed and for creating appointment body will be passed</param>
+            <param name="body"> For creating appointment body will be passed</param>
+        </member>
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventGraphHelper.UpdateEWSAppointment(Microsoft.Graph.Event,Microsoft.Exchange.WebServices.Data.ExchangeService,Microsoft.Exchange.WebServices.Data.ItemId,Microsoft.ApplicationInsights.TelemetryClient)">
+            <summary>
+            Updates an appointment.
+            </summary>
+            <param name="teamsEvent">Detailsof the event</param>
+            <param name="service">Exchange service that will be used to delete event.</param>
+            <param name="eventId"> For updating appointment an ID will be passed</param>
         </member>
         <member name="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.EventWorkflowHelper">
             <summary>
@@ -2539,6 +2537,11 @@
             The current culture's string localizer.
             </summary>
         </member>
+        <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper.delegatedGraphClient">
+            <summary>
+            Instance of graph service client for delegated requests.
+            </summary>
+        </member>
         <member name="F:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper.retryPolicy">
             <summary>
             Retry policy with linear backoff, retry twice with a jitter delay of up to 1 sec. Retry for HTTP 412(precondition failed).
@@ -2547,7 +2550,7 @@
             Reference: https://github.com/Polly-Contrib/Polly.Contrib.WaitAndRetry#new-jitter-recommendation.
             </remarks>
         </member>
-        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper.#ctor(Microsoft.Teams.Apps.EmployeeTraining.Repositories.IEventRepository,Microsoft.Teams.Apps.EmployeeTraining.Services.IEventSearchService,Microsoft.Teams.Apps.EmployeeTraining.Services.IUserEventSearchService,Microsoft.Teams.Apps.EmployeeTraining.Helpers.IUserGraphHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.IEventGraphHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.INotificationHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.ICategoryHelper,Microsoft.Teams.Apps.EmployeeTraining.Repositories.ILnDTeamConfigurationRepository,Microsoft.Extensions.Options.IOptions{Microsoft.Teams.Apps.EmployeeTraining.Models.BotSettings},Microsoft.Extensions.Localization.IStringLocalizer{Microsoft.Teams.Apps.EmployeeTraining.Strings})">
+        <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper.#ctor(Microsoft.Teams.Apps.EmployeeTraining.Repositories.IEventRepository,Microsoft.Teams.Apps.EmployeeTraining.Services.IEventSearchService,Microsoft.Teams.Apps.EmployeeTraining.Services.IUserEventSearchService,Microsoft.Teams.Apps.EmployeeTraining.Helpers.IUserGraphHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.IEventGraphHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.INotificationHelper,Microsoft.Teams.Apps.EmployeeTraining.Helpers.ICategoryHelper,Microsoft.Teams.Apps.EmployeeTraining.Repositories.ILnDTeamConfigurationRepository,Microsoft.Extensions.Options.IOptions{Microsoft.Teams.Apps.EmployeeTraining.Models.BotSettings},Microsoft.Extensions.Localization.IStringLocalizer{Microsoft.Teams.Apps.EmployeeTraining.Strings},Microsoft.AspNetCore.Http.IHttpContextAccessor,Microsoft.Teams.Apps.EmployeeTraining.Helpers.ITokenAcquisitionHelper)">
             <summary>
             Initializes a new instance of the <see cref="T:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper"/> class.
             </summary>
@@ -2561,6 +2564,8 @@
             <param name="lnDTeamConfigurationRepository">Team configuration repository for storing and updating team information.</param>
             <param name="botOptions">Represents a set of key/value application configuration properties for bot.</param>
             <param name="localizer">The current culture's string localizer.</param>
+            <param name="httpContextAccessor">HTTP context accessor for getting user claims.</param>
+            <param name="tokenAcquisitionHelper">Helper to get user access token for specified Graph scopes.</param>
         </member>
         <member name="M:Microsoft.Teams.Apps.EmployeeTraining.Helpers.UserEventsHelper.GetEventAsync(System.String,System.String,System.String)">
             <summary>
