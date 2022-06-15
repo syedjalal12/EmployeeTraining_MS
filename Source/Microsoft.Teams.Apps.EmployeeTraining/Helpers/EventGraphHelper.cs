@@ -191,7 +191,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>Created event details.</returns>
         public async Task<Event> CreateEventAsync(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
-            telemetryClient.TrackEvent($"CreateEventAsync");
             eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
             var teamsEvent = new Event
@@ -209,7 +208,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsReminderOn = true,
                 Location = eventEntity.Type == (int)EventType.InPerson ? new Location
                 {
-                    Address = new PhysicalAddress { Street = eventEntity.Venue },
+                    DisplayName = eventEntity.Venue,
                 }
                 :
                 null,
@@ -237,16 +236,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             if (this.isOnPremUser)
             {
                 string myDecodedString;
-
-                var onlineMeeting = new OnlineMeeting
+                if (eventEntity.Type == (int)EventType.Teams)
                 {
-                    StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
-                    EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
-                    Subject = "User Token Meeting",
-                };
+                    var onlineMeeting = new OnlineMeeting
+                    {
+                        StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
+                        EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
+                        Subject = "User Token Meeting",
+                    };
 
-                var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-                myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                    var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
+                    myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                }
+                else
+                {
+                    myDecodedString = teamsEvent.Body.Content;
+                }
 
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
@@ -286,7 +291,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsReminderOn = true,
                 Location = eventEntity.Type == (int)EventType.InPerson ? new Location
                 {
-                    Address = new PhysicalAddress { Street = eventEntity.Venue },
+                    DisplayName = eventEntity.Venue,
                 }
                 : null,
                 AllowNewTimeProposals = false,
