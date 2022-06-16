@@ -299,7 +299,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                         await this.UpdateEventNotificationInTeam(eventDetails);
                         await this.eventSearchService.RunIndexerOnDemandAsync();
                     }
-
                     return isGraphEventUpdated;
                 }
 

@@ -156,7 +156,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     var user = await this.delegatedGraphClient.Me.Request().GetAsync();
                     string userPrincipal = user.UserPrincipalName;
 
-                    ExchangeService service = this.Service(userPrincipal, telemetryClient);
+                    ExchangeService service = this.Service(userPrincipal);
 
                     ItemId eventId = eventGraphId;
 
@@ -164,7 +164,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 }
                 catch (Exception ex)
                 {
-                    telemetryClient.TrackEvent($"{ex}");
                     return false;
                 }
             }
@@ -177,7 +176,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 }
                 catch (Exception ex)
                 {
-                    telemetryClient.TrackEvent($"{ex}");
                     return false;
                 }
             }
@@ -256,7 +254,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
 
-                ExchangeService service = this.Service(userPrincipal, telemetryClient);
+                ExchangeService service = this.Service(userPrincipal);
                 this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
             }
             else
@@ -314,16 +312,16 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            bool creatorIsOnPrem = this.applicationGraphClient.Users[eventEntity.CreatedBy].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
+            bool isCreatedByOnPremUser = this.delegatedGraphClient.Users[eventEntity.CreatedBy].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
 
-            if (creatorIsOnPrem)
+            if (isCreatedByOnPremUser)
             {
                 var user = await this.delegatedGraphClient.Users[eventEntity.CreatedBy].Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
 
                 ItemId eventId = eventEntity.GraphEventId;
-                ExchangeService service = this.Service(userPrincipal, telemetryClient);
-                this.UpdateEWSAppointment(teamsEvent, service, eventId, telemetryClient);
+                ExchangeService service = this.Service(userPrincipal);
+                this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
             }
             else
             {
@@ -433,7 +431,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             switch ((EventType)eventEntity.Type)
             {
                 case EventType.InPerson:
-                    return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{HttpUtility.HtmlEncode(this.localizer.GetString("CalendarEventLocationText", eventEntity.Venue))}";
+                    return HttpUtility.HtmlEncode(eventEntity.Description);
 
                 case EventType.LiveEvent:
                     return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{this.localizer.GetString("CalendarEventLiveEventURLText", $"<a href='{eventEntity.MeetingLink}'>{eventEntity.MeetingLink}</a>")}";
@@ -448,7 +446,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// </summary>
         /// <param name="userPrincipal">Email ID of the user that is currently logged in.</param>
         /// <returns>Created service.</returns>
-        private ExchangeService Service(string userPrincipal, TelemetryClient telemetryClient)
+        private ExchangeService Service(string userPrincipal)
         {
             try
             {
@@ -460,7 +458,6 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"{ex}");
                 return null;
             }
         }
@@ -477,7 +474,9 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                Appointment appointment = this.CreateEWSAppointment(teamsEvent, service, body, telemetryClient);
+                CreateUpdate createEvent = CreateUpdate.CreateAppointment;
+                Appointment appointment = this.TeamAppointment(teamsEvent, createEvent, service, body);
+
                 Item item = Item.Bind(service, appointment.Id, new PropertySet(ItemSchema.Subject));
                 teamsEvent.Id = item.Id.ToString();
 
@@ -486,9 +485,21 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"{ex}");
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Updates the event.
+        /// </summary>
+        /// <param name="telemetryClient">Telementry.</param>
+        /// <param name="service">Exchange service that will be used to update event.</param>
+        /// <param name="teamsEvent">Details that will updated in the event</param>
+        /// <param name="eventId">Id of the event that need to me modified.</param>
+        private void EWS_CRUD_Event(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, ItemId eventId)
+        {
+            CreateUpdate updateEvent = CreateUpdate.UpdateAppointment;
+            Appointment appointment = this.TeamAppointment(teamsEvent, updateEvent, service, eventId.ToString());
         }
 
         /// <summary>
@@ -507,93 +518,64 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"{ex}");
                 return false;
             }
         }
 
         /// <summary>
-        /// Creates an appointment.
+        /// Creates or updates an appointment.
         /// </summary>
         /// <param name="teamsEvent">Detailsof the event</param>
+        /// <param name="createUpdate"> Enum to check if the appointment should be created or updated</param>
         /// <param name="service">Exchange service that will be used to delete event.</param>
-        /// <param name="body"> For creating appointment body will be passed</param>
-        private Appointment CreateEWSAppointment(Event teamsEvent, ExchangeService service, string body, TelemetryClient telemetryClient)
+        /// <param name="idOrBody"> For u[dating appointment an ID will be passed and for creating appointment body will be passed</param>
+        private Appointment TeamAppointment(Event teamsEvent, CreateUpdate createUpdate, ExchangeService service, string idOrBody)
         {
-            try
+            if (createUpdate.Equals(CreateUpdate.CreateAppointment))
             {
-                Appointment eventAppointment = new Appointment(service);
-                eventAppointment.Body = body;
-                eventAppointment.Subject = teamsEvent.Subject;
-                eventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
-                eventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
-                eventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
-                eventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.Address.Street : string.Empty;
+                this.EventAppointment = new Appointment(service);
+                this.EventAppointment.Body = idOrBody;
+            }
+            else
+            {
+                ItemId eventId = new ItemId(idOrBody);
+                this.EventAppointment = Appointment.Bind(service, eventId);
+                this.EventAppointment.Body = teamsEvent.Body.Content;
+            }
 
-                foreach (var attendee in teamsEvent.Attendees)
+            this.EventAppointment.Subject = teamsEvent.Subject;
+            this.EventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
+            this.EventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
+            this.EventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
+            this.EventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.DisplayName : string.Empty;
+
+            foreach (var attendee in teamsEvent.Attendees)
+            {
+                if (attendee.Type == 0)
                 {
-                    if (attendee.Type == 0)
-                    {
-                        eventAppointment.RequiredAttendees.Add(attendee.EmailAddress.Address);
-                    }
-                    else
-                    {
-                        eventAppointment.OptionalAttendees.Add(attendee.EmailAddress.Address);
-                    }
+                    this.EventAppointment.RequiredAttendees.Add(attendee.EmailAddress.Address);
                 }
-
-                eventAppointment.ReminderDueBy = DateTime.Now;
-                eventAppointment.Save(SendInvitationsMode.SendToAllAndSaveCopy);
-
-                return eventAppointment;
-            }
-            catch (Exception ex)
-            {
-                telemetryClient.TrackEvent($"{ex}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Updates an appointment.
-        /// </summary>
-        /// <param name="teamsEvent">Detailsof the event</param>
-        /// <param name="service">Exchange service that will be used to delete event.</param>
-        /// <param name="eventId"> For updating appointment an ID will be passed</param>
-        private Appointment UpdateEWSAppointment(Event teamsEvent, ExchangeService service, ItemId eventId, TelemetryClient telemetryClient)
-        {
-            try
-            {
-                Appointment eventAppointment = Appointment.Bind(service, eventId);
-                eventAppointment.Body = teamsEvent.Body.Content;
-                eventAppointment.Subject = teamsEvent.Subject;
-                eventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
-                eventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
-                eventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
-                eventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.Address.Street : string.Empty;
-
-                foreach (var attendee in teamsEvent.Attendees)
+                else
                 {
-                    if (attendee.Type == 0)
-                    {
-                        eventAppointment.RequiredAttendees.Add(attendee.EmailAddress.Address);
-                    }
-                    else
-                    {
-                        eventAppointment.OptionalAttendees.Add(attendee.EmailAddress.Address);
-                    }
+                    this.EventAppointment.OptionalAttendees.Add(attendee.EmailAddress.Address);
                 }
-
-                eventAppointment.ReminderDueBy = DateTime.Now;
-                eventAppointment.Update(ConflictResolutionMode.AlwaysOverwrite, SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy);
-
-                return eventAppointment;
             }
-            catch (Exception ex)
+
+            this.EventAppointment.ReminderDueBy = DateTime.Now;
+
+            if (createUpdate.Equals(CreateUpdate.CreateAppointment))
             {
-                telemetryClient.TrackEvent($"{ex}");
-                return null;
+                this.EventAppointment.Save(SendInvitationsMode.SendToAllAndSaveCopy);
             }
+            else
+            {
+                SendInvitationsOrCancellationsMode mode = this.EventAppointment.IsMeeting ?
+                SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy : SendInvitationsOrCancellationsMode.SendToNone;
+
+                this.EventAppointment.Update(ConflictResolutionMode.AlwaysOverwrite);
+            }
+
+            return this.EventAppointment;
         }
     }
 }
