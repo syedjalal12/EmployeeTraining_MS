@@ -739,7 +739,6 @@ D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\R
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\ClientApp\tsconfig.json
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\ClientApp\tsconfig.test.json
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\ClientApp\tslint.json
-D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\ClientApp\build\asset-manifest.json
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.exe
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.deps.json
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.runtimeconfig.json
@@ -946,3 +945,4 @@ D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\obj\R
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\obj\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.dll
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\obj\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.pdb
 D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\obj\Release\netcoreapp3.1\Microsoft.Teams.Apps.EmployeeTraining.genruntimeconfig.cache
+D:\EmployeeTraining_MS\Source\Source\Microsoft.Teams.Apps.EmployeeTraining\bin\Release\netcoreapp3.1\ClientApp\build\asset-manifest.json

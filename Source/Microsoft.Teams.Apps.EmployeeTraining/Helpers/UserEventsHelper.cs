@@ -7,12 +7,14 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Net.Http.Headers;
     using System.Threading.Tasks;
     using Microsoft.ApplicationInsights;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Azure.Cosmos.Table;
     using Microsoft.Extensions.Localization;
     using Microsoft.Extensions.Options;
+    using Microsoft.Graph;
     using Microsoft.Teams.Apps.EmployeeTraining.Cards;
     using Microsoft.Teams.Apps.EmployeeTraining.Models;
     using Microsoft.Teams.Apps.EmployeeTraining.Models.Enums;
@@ -78,6 +80,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         private readonly IStringLocalizer<Strings> localizer;
 
         /// <summary>
+        /// Instance of graph service client for delegated requests.
+        /// </summary>
+        private readonly GraphServiceClient delegatedGraphClient;
+
+        /// <summary>
         /// Retry policy with linear backoff, retry twice with a jitter delay of up to 1 sec. Retry for HTTP 412(precondition failed).
         /// </summary>
         /// <remarks>
@@ -99,6 +106,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="lnDTeamConfigurationRepository">Team configuration repository for storing and updating team information.</param>
         /// <param name="botOptions">Represents a set of key/value application configuration properties for bot.</param>
         /// <param name="localizer">The current culture's string localizer.</param>
+        /// <param name="httpContextAccessor">HTTP context accessor for getting user claims.</param>
+        /// <param name="tokenAcquisitionHelper">Helper to get user access token for specified Graph scopes.</param>
         public UserEventsHelper(
             IEventRepository eventRepository,
             IEventSearchService eventSearchService,
@@ -109,7 +118,9 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             ICategoryHelper categoryHelper,
             ILnDTeamConfigurationRepository lnDTeamConfigurationRepository,
             IOptions<BotSettings> botOptions,
-            IStringLocalizer<Strings> localizer)
+            IStringLocalizer<Strings> localizer,
+            IHttpContextAccessor httpContextAccessor,
+            ITokenAcquisitionHelper tokenAcquisitionHelper)
         {
             this.eventRepository = eventRepository;
             this.eventSearchService = eventSearchService;
@@ -121,6 +132,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             this.lnDTeamConfigurationRepository = lnDTeamConfigurationRepository;
             this.botOptions = botOptions;
             this.localizer = localizer;
+
+            httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
+
+            var oidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
+            var userObjectId = httpContextAccessor.HttpContext.User.Claims?
+                .FirstOrDefault(claim => oidClaimType.Equals(claim.Type, StringComparison.OrdinalIgnoreCase))?.Value;
+
+            if (!string.IsNullOrEmpty(userObjectId))
+            {
+                var jwtToken = AuthenticationHeaderValue.Parse(httpContextAccessor.HttpContext.Request.Headers["Authorization"].ToString()).Parameter;
+
+                this.delegatedGraphClient = GraphServiceClientFactory.GetAuthenticatedGraphClient(async () =>
+                {
+                    return await tokenAcquisitionHelper.GetUserAccessTokenAsync(userObjectId, jwtToken);
+                });
+            }
         }
 
         /// <summary>
@@ -212,6 +239,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             {
                 var eventDetails = await this.eventRepository.GetEventDetailsAsync(eventId, teamId);
 
+                bool creatorIsOnPrem = this.delegatedGraphClient.Users[eventDetails.CreatedBy].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
+                var user = await this.delegatedGraphClient.Users[userAADObjectId].Request().GetAsync();
+                string userEmail = user.UserPrincipalName;
+
                 // Return false if any one of the following condition matches:
                 // 1. Event status is other than active
                 // 2. Registration for the event is closed by LnD team
@@ -227,22 +258,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 }
 
                 // Return false if any one of the following condition matches:
-                // Event is private and logged in users' Id is not present in either mandatory attendees or optional attendees
+                // Event is private and logged in users' Id or email is not present in either mandatory attendees or optional attendees
                 // If condition is true, means user is not added for this private event hence cannot register.
                 if (eventDetails.Audience == (int)EventAudience.Private
                     && eventDetails.MandatoryAttendees != null
-                    && !eventDetails.MandatoryAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase)
+                    && !(eventDetails.MandatoryAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase) || eventDetails.MandatoryAttendees.Contains(userEmail, StringComparison.OrdinalIgnoreCase))
                     && eventDetails.OptionalAttendees != null
-                    && !eventDetails.OptionalAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase))
+                    && !(eventDetails.OptionalAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase) || eventDetails.OptionalAttendees.Contains(userEmail, StringComparison.OrdinalIgnoreCase)))
                 {
                     return false;
                 }
 
                 // If user is already present in registered attendees coulmn or auto registered attendees column then return false.
                 if ((eventDetails.AutoRegisteredAttendees != null
-                    && eventDetails.AutoRegisteredAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase))
+                    && (eventDetails.AutoRegisteredAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase) || eventDetails.AutoRegisteredAttendees.Contains(userEmail, StringComparison.OrdinalIgnoreCase)))
                     || (eventDetails.RegisteredAttendees != null
-                    && eventDetails.RegisteredAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase)))
+                    && (eventDetails.RegisteredAttendees.Contains(userAADObjectId, StringComparison.OrdinalIgnoreCase) || eventDetails.RegisteredAttendees.Contains(userEmail, StringComparison.OrdinalIgnoreCase))))
                 {
                     return true;
                 }
@@ -263,13 +294,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 if (isRegisteredSuccessfully)
                 {
                     var isGraphEventUpdated = await this.UpdateGraphEvent(eventDetails, telemetryClient);
-
                     if (isGraphEventUpdated)
                     {
                         await this.UpdateEventNotificationInTeam(eventDetails);
                         await this.eventSearchService.RunIndexerOnDemandAsync();
                     }
-
                     return isGraphEventUpdated;
                 }
 

@@ -206,7 +206,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsReminderOn = true,
                 Location = eventEntity.Type == (int)EventType.InPerson ? new Location
                 {
-                    Address = new PhysicalAddress { Street = eventEntity.Venue },
+                    DisplayName = eventEntity.Venue,
                 }
                 :
                 null,
@@ -234,16 +234,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             if (this.isOnPremUser)
             {
                 string myDecodedString;
-
-                var onlineMeeting = new OnlineMeeting
+                if (eventEntity.Type == (int)EventType.Teams)
                 {
-                    StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
-                    EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
-                    Subject = "User Token Meeting",
-                };
+                    var onlineMeeting = new OnlineMeeting
+                    {
+                        StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
+                        EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
+                        Subject = "User Token Meeting",
+                    };
 
-                var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-                myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                    var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
+                    myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                }
+                else
+                {
+                    myDecodedString = teamsEvent.Body.Content;
+                }
 
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
@@ -283,7 +289,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsReminderOn = true,
                 Location = eventEntity.Type == (int)EventType.InPerson ? new Location
                 {
-                    Address = new PhysicalAddress { Street = eventEntity.Venue },
+                    DisplayName = eventEntity.Venue,
                 }
                 : null,
                 AllowNewTimeProposals = false,
@@ -306,9 +312,11 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity);
             }
 
-            if (this.isOnPremUser)
+            bool isCreatedByOnPremUser = this.delegatedGraphClient.Users[eventEntity.CreatedBy].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
+
+            if (isCreatedByOnPremUser)
             {
-                var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+                var user = await this.delegatedGraphClient.Users[eventEntity.CreatedBy].Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
 
                 ItemId eventId = eventEntity.GraphEventId;
@@ -423,7 +431,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             switch ((EventType)eventEntity.Type)
             {
                 case EventType.InPerson:
-                    return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{HttpUtility.HtmlEncode(this.localizer.GetString("CalendarEventLocationText", eventEntity.Venue))}";
+                    return HttpUtility.HtmlEncode(eventEntity.Description);
 
                 case EventType.LiveEvent:
                     return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{this.localizer.GetString("CalendarEventLiveEventURLText", $"<a href='{eventEntity.MeetingLink}'>{eventEntity.MeetingLink}</a>")}";
@@ -539,7 +547,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             this.EventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
             this.EventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
             this.EventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
-            this.EventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.Address.Street : string.Empty;
+            this.EventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.DisplayName : string.Empty;
 
             foreach (var attendee in teamsEvent.Attendees)
             {
