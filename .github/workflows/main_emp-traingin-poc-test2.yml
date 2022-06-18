@@ -31,6 +31,8 @@ jobs:
         run: |
              cd Source
              dotnet publish /p:TreatWarningsAsErrors=false -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        env:
+             CI: false
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v2
