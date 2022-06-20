@@ -149,36 +149,67 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <returns>True if event cancellation is successful.</returns>
         public async Task<bool> CancelEventAsync(string eventGraphId, string createdByUserId, string comment, TelemetryClient telemetryClient)
         {
+            bool isCreatedByOnPremUser = this.delegatedGraphClient.Users[createdByUserId].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
+
+            var user = await this.delegatedGraphClient.Me.Request().GetAsync();
+            string userPrincipal = user.UserPrincipalName;
+
+            ItemId eventId = eventGraphId;
+            ExchangeService service = this.Service(userPrincipal, telemetryClient);
+            Item item;
+
+            try
+            {
+                item = Item.Bind(service, eventId);
+            }
+            catch
+            {
+                telemetryClient.TrackException(new Exception($"Event {eventGraphId} does not exist."));
+                return false;
+            }
+
             if (this.isOnPremUser)
             {
-                try
+                if (isCreatedByOnPremUser)
                 {
-                    var user = await this.delegatedGraphClient.Me.Request().GetAsync();
-                    string userPrincipal = user.UserPrincipalName;
-
-                    ExchangeService service = this.Service(userPrincipal, telemetryClient);
-
-                    ItemId eventId = eventGraphId;
-
-                    return this.EWS_CRUD_Event(telemetryClient, service, eventId);
+                    bool onPremResult = this.EWS_CRUD_Event(telemetryClient, service, eventId);
+                    if (onPremResult)
+                    {
+                        telemetryClient.TrackEvent($"{item.Subject} cancelled SUCCESS");
+                        return true;
+                    }
+                    else
+                    {
+                        telemetryClient.TrackException(new Exception($"{item.Subject} cancellation failed"));
+                        return false;
+                    }
                 }
-                catch (Exception ex)
+                else
                 {
-                    telemetryClient.TrackEvent($"OnPrem event cancellation failed {ex.Message}");
+                    telemetryClient.TrackException(new Exception($"OnPrem user can't delete {item.Subject}"));
                     return false;
                 }
             }
             else
             {
-                try
+                if (isCreatedByOnPremUser)
                 {
-                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    telemetryClient.TrackEvent($"Cloud event cancellation failed {ex.Message}");
+                    telemetryClient.TrackException(new Exception($"Cloud user can't delete {item.Subject}"));
                     return false;
+                }
+                else
+                {
+                    try
+                    {
+                        await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
+                        telemetryClient.TrackEvent($"{item.Subject} cancelled SUCCESS");
+                        return true;
+                    }
+                    catch
+                    {
+                        telemetryClient.TrackException(new Exception($"{item.Subject} cancellation failed"));
+                        return false;
+                    }
                 }
             }
         }
