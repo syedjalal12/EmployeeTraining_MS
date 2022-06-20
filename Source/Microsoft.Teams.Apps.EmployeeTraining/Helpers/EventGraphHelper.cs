@@ -214,6 +214,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams,
                 OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown,
             };
+
             teamsEvent.Start = new DateTimeTimeZone
             {
                 DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
@@ -233,7 +234,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
             if (this.isOnPremUser)
             {
-                string myDecodedString;
+                string myDecodedString, bodyType, bodyPreview, subject;
                 if (eventEntity.Type == (int)EventType.Teams)
                 {
                     var onlineMeeting = new OnlineMeeting
@@ -245,6 +246,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                     var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
                     myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                    myDecodedString = myDecodedString.Remove(0, 15);
+                    myDecodedString = teamsEvent.Body.Content + " " + myDecodedString;
                 }
                 else
                 {
