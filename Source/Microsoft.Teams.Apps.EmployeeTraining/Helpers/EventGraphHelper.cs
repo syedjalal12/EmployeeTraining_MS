@@ -508,6 +508,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// </summary>
         /// <param name="teamsEvent">Event details which will be sent to Graph API.</param>
         /// <param name="eventEntity">Event details from user for which event needs to be created.</param>
+        /// <param name="telemetryClient">Telementry.</param>
         /// <returns>Event details to be sent to Graph API.</returns>
         private Event GetRecurringEventTemplate(Event teamsEvent, EventEntity eventEntity, TelemetryClient telemetryClient)
         {
@@ -544,6 +545,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// Get list of event attendees for creating teams event.
         /// </summary>
         /// <param name="eventEntity">Event details containing registered attendees.</param>
+        /// <param name="telemetryClient">Telementry.</param>
         /// <returns>List of attendees.</returns>
         private async Task<List<Microsoft.Graph.Attendee>> GetEventAttendeesTemplateAsync(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
@@ -639,6 +641,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// Get the event body content based on event type
         /// </summary>
         /// <param name="eventEntity">The event details</param>
+        /// <param name="telemetryClient">Telementry.</param>
         /// <returns>Returns </returns>
         private string GetEventBodyContent(EventEntity eventEntity, TelemetryClient telemetryClient)
         {
@@ -668,6 +671,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// Create teams service.
         /// </summary>
         /// <param name="userPrincipal">Email ID of the user that is currently logged in.</param>
+        /// <param name="telemetryClient">Telementry.</param>
         /// <returns>Created service.</returns>
         private ExchangeService Service(string userPrincipal, TelemetryClient telemetryClient)
         {
@@ -776,6 +780,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="createUpdate"> Enum to check if the appointment should be created or updated</param>
         /// <param name="service">Exchange service that will be used to delete event.</param>
         /// <param name="idOrBody"> For u[dating appointment an ID will be passed and for creating appointment body will be passed</param>
+        /// <param name="telemetryClient">Telementry.</param>
         private Appointment TeamAppointment(Event teamsEvent, CreateUpdate createUpdate, ExchangeService service, string idOrBody, TelemetryClient telemetryClient)
         {
             try
