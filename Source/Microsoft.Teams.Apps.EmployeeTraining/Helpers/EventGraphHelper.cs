@@ -309,6 +309,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                             var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
                             myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                            myDecodedString = myDecodedString.Remove(0, 15);
+                            myDecodedString = teamsEvent.Body.Content + " " + myDecodedString;
 
                             telemetryClient.TrackEvent("String decoding SUCCESS");
                         }
