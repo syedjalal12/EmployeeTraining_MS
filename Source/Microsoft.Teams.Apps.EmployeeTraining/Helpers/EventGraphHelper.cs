@@ -680,21 +680,14 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             try
             {
                 telemetryClient.TrackTrace("Service function CALLED");
-                try
-                {
-                    var ewsClient = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
-                    ewsClient.Credentials = new WebCredentials(this.serviceEmail, this.servicePass);
-                    ewsClient.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userPrincipal);
-                    ewsClient.Url = new Uri("https://mail.qatartest309.com/EWS/Exchange.asmx");
 
-                    telemetryClient.TrackTrace("Service creation SUCCESS");
-                    return ewsClient;
-                }
-                catch (Exception ex)
-                {
-                    telemetryClient.TrackException(new Exception($"Service function FAIL {ex.Message}"));
-                    return null;
-                }
+                var ewsClient = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
+                ewsClient.Credentials = new WebCredentials(this.serviceEmail, this.servicePass);
+                ewsClient.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userPrincipal);
+                ewsClient.Url = new Uri("https://mail.qatartest309.com/EWS/Exchange.asmx");
+
+                telemetryClient.TrackTrace("Service creation SUCCESS");
+                return ewsClient;
             }
             catch (Exception ex)
             {
