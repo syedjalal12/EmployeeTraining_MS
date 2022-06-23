@@ -7,6 +7,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
     using System;
     using System.Threading.Tasks;
     using Microsoft.ApplicationInsights;
+    using Microsoft.ApplicationInsights.Extensibility;
     using Microsoft.AspNetCore.Builder;
     using Microsoft.AspNetCore.Hosting;
     using Microsoft.AspNetCore.SpaServices.ReactDevelopmentServer;
@@ -68,8 +69,16 @@ namespace Microsoft.Teams.Apps.EmployeeTraining
             services.AddSearchService(this.configuration);
             services.AddSingleton<TelemetryClient>();
 
-            services
-                .AddApplicationInsightsTelemetry(this.configuration.GetValue<string>("ApplicationInsights:InstrumentationKey"));
+            if (this.configuration.GetValue<bool>("EnableTelemetry"))
+            {
+                services.AddApplicationInsightsTelemetry(this.configuration.GetValue<string>("ApplicationInsights:InstrumentationKey"));
+            }
+            else
+            {
+#pragma warning disable CS0618 // Type or member is obsolete
+                TelemetryConfiguration.Active.DisableTelemetry = true;
+#pragma warning restore CS0618 // Type or member is obsolete
+            }
 
             // In production, the React files will be served from this directory.
             services.AddSpaStaticFiles(configuration =>

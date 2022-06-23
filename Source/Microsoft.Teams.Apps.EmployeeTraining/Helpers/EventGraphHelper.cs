@@ -259,8 +259,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     {
                         DisplayName = eventEntity.Venue,
                     }
-                            :
-                            null;
+                    : null;
                     teamsEvent.AllowNewTimeProposals = false;
                     teamsEvent.IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams;
                     teamsEvent.OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown;
