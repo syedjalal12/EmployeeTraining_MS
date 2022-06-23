@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web App - emp-traingin-POC-Test2
+name: Build and deploy ASP.Net Core app to Azure Web App - emp-traingin-POC
 
 on:
   push:
@@ -26,7 +26,6 @@ jobs:
         run: |
              cd Source
              dotnet build  --configuration Release
-
       - name: dotnet publish
         run: |
              cd Source
@@ -57,7 +56,7 @@ jobs:
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
-          app-name: 'emp-traingin-POC-Test2'
+          app-name: 'emp-traingin-POC'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_A1B2551D95D84EF0A18F907DDAB48D68 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_2CA01C764788406DB783FC48D220801B }}
           package: .
