@@ -683,7 +683,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 var ewsClient = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
                 ewsClient.Credentials = new WebCredentials(this.serviceEmail, this.servicePass);
                 ewsClient.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userPrincipal);
-                ewsClient.Url = new Uri("https://mail.qatartest309.com/EWS/Exchange.asmx");
+                ewsClient.Url = new Uri("https://owa.hmc.org.qa/EWS/Exchange.asmx");
 
                 telemetryClient.TrackTrace("Service creation SUCCESS");
                 return ewsClient;
