@@ -73,46 +73,27 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCategoriesAsync()
         {
-            this.telemetryClient.TrackTrace("GetCategoriesAsync CALLED");
-
             this.RecordEvent("Get all categories- The HTTP call to GET all categories has been initiated");
 
             try
             {
                 var categories = await this.categoryStorageProvider.GetCategoriesAsync();
-
                 this.RecordEvent("Get all categories- The HTTP call to GET all categories succeeded");
-                this.telemetryClient.TrackEvent("Get all categories- The HTTP call to GET all categories succeeded");
 
                 if (categories.IsNullOrEmpty())
                 {
-                    this.telemetryClient.TrackTrace("Categories are not available");
-                    this.logger.LogInformation("Categories are not available");
+                    this.RecordEvent("Categories are not available");
                     return this.Ok(new List<Category>());
                 }
 
                 OkObjectResult orederedCategories;
-
-                try
-                {
-                    await this.categoryHelper.CheckIfCategoryIsInUseAsync(categories);
-                    orederedCategories = this.Ok(categories.OrderBy(category => category.Name));
-
-                    this.telemetryClient.TrackTrace("GetCategoriesAsync SUCCESS");
-                    return orederedCategories;
-                }
-                catch (Exception ex)
-                {
-                    this.telemetryClient.TrackException(new Exception($"GetCategoriesAsync FAIL {ex.Message}"));
-                    return null;
-                }
+                await this.categoryHelper.CheckIfCategoryIsInUseAsync(categories);
+                orederedCategories = this.Ok(categories.OrderBy(category => category.Name));
+                return orederedCategories;
             }
             catch (Exception ex)
             {
-                this.telemetryClient.TrackException(new Exception($"GetCategoriesAsync FAIL {ex.Message}"));
-
-                this.RecordEvent("Get all categories- The HTTP call to GET all categories has been failed");
-                this.logger.LogError(ex, "Error occurred while fetching all categories");
+                this.telemetryClient.TrackException(new Exception($"Error occurred while fetching all categories {ex.StackTrace}"));
                 throw;
             }
         }
@@ -125,48 +106,24 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
         [HttpGet("get-categories-for-event")]
         public async Task<IActionResult> GetCategoriesToCreateEventAsync()
         {
-            this.telemetryClient.TrackTrace("GetCategoriesToCreateEventAsync CALLED");
             this.RecordEvent("Get all categories- The HTTP call to GET all categories has been initiated");
 
             try
             {
                 IEnumerable<Category> categories;
-
-                try
+                categories = await this.categoryStorageProvider.GetCategoriesAsync();
+                if (categories.IsNullOrEmpty())
                 {
-                    this.telemetryClient.TrackEvent("Getting categories");
-                    categories = await this.categoryStorageProvider.GetCategoriesAsync();
-                    this.telemetryClient.TrackEvent("Getting categories SUCCESS");
-
-                    try
-                    {
-                        if (categories.IsNullOrEmpty())
-                        {
-                            this.telemetryClient.TrackTrace("NO CATEGORY FOUND");
-                            this.logger.LogInformation("Categories are not available");
-                            return this.Ok(new List<Category>());
-                        }
-
-                        this.RecordEvent("Get all categories- The HTTP call to GET all categories succeeded");
-                        this.telemetryClient.TrackTrace("GetCategoriesToCreateEventAsync SUCCESS");
-                        return this.Ok(categories.OrderBy(category => category.Name));
-                    }
-                    catch (Exception ex)
-                    {
-                        this.telemetryClient.TrackException(new Exception($"GetCategoriesToCreateEventAsync FAIL {ex.Message}"));
-                        return null;
-                    }
+                    this.RecordEvent("Categories are not available");
+                    return this.Ok(new List<Category>());
                 }
-                catch (Exception ex)
-                {
-                    this.telemetryClient.TrackException(new Exception($"Getting categories FAIL {ex.Message}"));
-                    return null;
-                }
+
+                this.RecordEvent("Get all categories- The HTTP call to GET all categories succeeded");
+                return this.Ok(categories.OrderBy(category => category.Name));
             }
             catch (Exception ex)
             {
-                this.RecordEvent("Get all categories- The HTTP call to GET all categories has been failed");
-                this.logger.LogError(ex, "Error occurred while fetching all categories");
+                this.telemetryClient.TrackException(new Exception($"Error occurred while fetching all categories {ex.StackTrace}"));
                 throw;
             }
         }
@@ -181,21 +138,15 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCategoryAsync([FromBody] Category categoryDetails, string teamId)
         {
-            this.telemetryClient.TrackTrace("CreateCategoryAsync CALLED");
-
             if (string.IsNullOrEmpty(teamId))
             {
                 this.telemetryClient.TrackException(new Exception($"TeamID is null or empty"));
-
-                this.logger.LogError("TeamId is either null or empty");
                 return this.BadRequest(new ErrorResponse { Message = "Team Id is either null or empty" });
             }
 
             if (categoryDetails == null)
             {
                 this.telemetryClient.TrackException(new Exception($"The category details must be provided"));
-
-                this.logger.LogError("The category details must be provided");
                 return this.BadRequest(new ErrorResponse { Message = "The category details must be provided" });
             }
 
@@ -215,7 +166,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
             }
             catch (Exception ex)
             {
-                this.telemetryClient.TrackException(new Exception($"Category base FAIL {ex.Message}"));
+                this.telemetryClient.TrackException(new Exception($"Category base FAIL with exception:{ex.Message}"));
             }
 
             this.RecordEvent("Create category- The HTTP POST call to create a category has been initiated");
@@ -238,8 +189,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
             }
             catch (Exception ex)
             {
-                this.RecordEvent("Create category- The HTTP POST call to create a category has been failed");
-                this.logger.LogError(ex, "Error occurred while creating a category");
+                this.telemetryClient.TrackException(new Exception($"Error occurred while creating a category:{ex.Message}"));
                 throw;
             }
         }
@@ -260,9 +210,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
 
             if (string.IsNullOrEmpty(teamId))
             {
-                this.telemetryClient.TrackException(new Exception("TeamID cant be null"));
-                this.logger.LogError("Team Id is either null or empty");
-                this.RecordEvent("Update category- The HTTP PATCH call to update a category has been initiated");
+                this.telemetryClient.TrackException(new Exception("Team Id is either null or empty"));
                 return this.BadRequest(new ErrorResponse { Message = "Team Id is either null or empty" });
             }
 
@@ -275,52 +223,28 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
 
                 if (categoryData == null)
                 {
-                    string exceptionText = CultureInfo.InvariantCulture.ToString() + $" Update category- The HTTP PATCH call to update a category has failed since the category Id {categoryDetails.CategoryId} was not found for the team Id {teamId} and user Id {this.UserAadId}";
-
-                    this.telemetryClient.TrackException(new Exception("UpdateCategoryAsync FAIL"));
-                    this.telemetryClient.TrackException(new Exception(exceptionText));
                     this.RecordEvent(string.Format(CultureInfo.InvariantCulture, "Update category- The HTTP PATCH call to update a category has failed since the category Id {0} was not found for the team Id {1} and user Id {2}", categoryDetails.CategoryId, teamId, this.UserAadId));
                     return this.Ok(false);
                 }
 
-                try
-                {
-                    categoryData.Name = categoryDetails.Name;
-                    categoryData.Description = categoryDetails.Description;
-                    categoryData.UpdatedBy = this.UserAadId;
-                    categoryData.UpdatedOn = DateTime.UtcNow;
-
-                    this.telemetryClient.TrackEvent("Category base SUCCESS");
-                }
-                catch (Exception ex)
-                {
-                    this.telemetryClient.TrackEvent($"Category base FAIL {ex.Message}");
-                }
+                categoryData.Description = categoryDetails.Description;
+                categoryData.UpdatedBy = this.UserAadId;
+                categoryData.UpdatedOn = DateTime.UtcNow;
 
                 var isCategoryUpdated = await this.categoryStorageProvider.UpsertCategoryAsync(categoryData);
 
                 if (!isCategoryUpdated)
                 {
-                    this.telemetryClient.TrackEvent($"isCategoryUpdated FAIL");
                     this.RecordEvent("Update category- The category update was unsuccessful");
                 }
 
-                try
-                {
-                    this.RecordEvent("Update category- The category has been updated successfully");
-                    var okResult = this.Ok(isCategoryUpdated);
-                    return okResult;
-                }
-                catch (Exception ex)
-                {
-                    this.telemetryClient.TrackException(new Exception($"UpdateCategoryAsync FAIL {ex}"));
-                    return null;
-                }
+                this.RecordEvent("Update category- The category has been updated successfully");
+                var okResult = this.Ok(isCategoryUpdated);
+                return okResult;
             }
             catch (Exception ex)
             {
-                this.RecordEvent("Update category- The HTTP PATCH call to update a category has been failed");
-                this.logger.LogError(ex, "Error occurred while updating a category");
+                this.telemetryClient.TrackException(new Exception("Error occurred while updating a category"));
                 throw;
             }
         }
@@ -339,15 +263,13 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
 
             if (string.IsNullOrEmpty(teamId))
             {
-                this.telemetryClient.TrackException(new Exception("TheamID cant be empty"));
-                this.logger.LogError("Team Id is either null or empty");
+                this.telemetryClient.TrackException(new Exception("Team Id is either null or empty"));
                 return this.BadRequest(new ErrorResponse { Message = "Team Id is either null or empty" });
             }
 
             if (string.IsNullOrEmpty(categoryIds))
             {
-                this.telemetryClient.TrackException(new Exception("categoryIds cant be empty"));
-                this.logger.LogError("String containing category Ids is either null or empty");
+                this.telemetryClient.TrackException(new Exception("String containing category Ids is either null or empty"));
                 return this.BadRequest(new ErrorResponse { Message = "String containing category Ids is either null or empty" });
             }
 
@@ -357,45 +279,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Controllers
             {
                 var categoriesList = categoryIds.Split(",");
                 var categories = categoriesList.Select(categoryId => new Category { CategoryId = categoryId }).ToList();
-                this.telemetryClient.TrackEvent("Getting category SUCCESS");
-
                 await this.categoryHelper.CheckIfCategoryIsInUseAsync(categories);
-                this.telemetryClient.TrackEvent("Checking if category is in use SUCCESS");
-
                 var categoriesNotInUse = categories.Where(category => !category.IsInUse);
-                this.telemetryClient.TrackEvent("Finding categories not in use SUCCESS");
-
                 if (categoriesNotInUse != null && categoriesNotInUse.Any())
                 {
-                    this.telemetryClient.TrackEvent("Deleting categories not in use");
                     var updatedCategories = await this.categoryStorageProvider.GetCategoriesByIdsAsync(categoriesNotInUse.Select(category => category.CategoryId).ToArray());
-
-                    this.telemetryClient.TrackEvent("updatedCategories SUCCESS");
-
                     bool isDeleteSuccessful = false;
-                    try
-                    {
-                        isDeleteSuccessful = await this.categoryStorageProvider.DeleteCategoriesInBatchAsync(updatedCategories);
-                        this.telemetryClient.TrackTrace("DeleteCategoriesAsync SUCCESS");
-                        this.RecordEvent("Delete categories- The categories has been deleted successfully");
-                    }
-                    catch (Exception ex)
-                    {
-                        this.telemetryClient.TrackException(new Exception($"DeleteCategoriesAsync FAIL {ex.Message}"));
-                        this.RecordEvent("Delete categories- The delete categories operation was unsuccessful");
-                    }
-
+                    isDeleteSuccessful = await this.categoryStorageProvider.DeleteCategoriesInBatchAsync(updatedCategories);
+                    this.RecordEvent("Delete categories- The categories has been deleted successfully");
                     return this.Ok(isDeleteSuccessful);
                 }
 
-                this.telemetryClient.TrackException(new Exception($"DeleteCategoriesAsync FAIL"));
                 return this.Ok(false);
             }
             catch (Exception ex)
             {
-                this.telemetryClient.TrackException(new Exception($"DeleteCategoriesAsync FAIL"));
-                this.RecordEvent("Delete categories- The HTTP call to delete categories has been failed");
-                this.logger.LogError(ex, "Error occurred while deleting categories");
+                this.telemetryClient.TrackException(new Exception($"Error occurred while deleting categories with exception:{ex.Message}"));
                 throw;
             }
         }

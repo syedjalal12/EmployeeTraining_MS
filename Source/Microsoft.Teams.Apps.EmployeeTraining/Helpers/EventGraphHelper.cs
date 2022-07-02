@@ -32,14 +32,14 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
     public class EventGraphHelper : IEventGraphHelper
     {
         /// <summary>
-        /// Instance service email;
+        /// Instance service Account email;
         /// </summary>
-        private readonly string serviceEmail;
+        private readonly string serviceAccountEmail;
 
         /// <summary>
         /// Instance service password;
         /// </summary>
-        private readonly string servicePass;
+        private readonly string serviceAccountPwd;
 
         /// <summary>
         /// Represents a set of key/value application configuration properties for Azure.
@@ -95,8 +95,8 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             this.userGraphHelper = userGraphHelper;
             httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
             this.azureVaultOptions = azureVaultOptions ?? throw new ArgumentNullException(nameof(azureVaultOptions));
-            this.serviceEmail = this.azureVaultOptions.Value.ServiceEmail;
-            this.servicePass = this.azureVaultOptions.Value.ServicePassword;
+            this.serviceAccountEmail = this.azureVaultOptions.Value.ServiceEmail;
+            this.serviceAccountPwd = this.azureVaultOptions.Value.ServicePassword;
 
             var oidClaimType = "http://schemas.microsoft.com/identity/claims/objectidentifier";
             var userObjectId = httpContextAccessor.HttpContext.User.Claims?
@@ -151,7 +151,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Canceling event:{eventGraphId}");
+                telemetryClient?.TrackTrace($"Teams Event:CancelEventAsync:Canceling event:{eventGraphId}");
 
                 Item item;
                 ExchangeService service;
@@ -162,25 +162,25 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 bool isCreatorOnPrem = this.delegatedGraphClient.Users[createdByUserId].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
                 if (isCreatorOnPrem)
                 {
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-Prem event Cancelling:{eventGraphId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CancelEventAsync:On-Prem event Cancelling:{eventGraphId}");
                     service = this.EWSService(userPrincipal, telemetryClient);
                     item = Item.Bind(service, eventId);
                     item.Delete(DeleteMode.MoveToDeletedItems);
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-Prem event Cancelled:{eventGraphId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CancelEventAsync:On-Prem event Cancelled:{eventGraphId}");
                     return true;
                 }
                 else
                 {
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line event Cancelling:{eventGraphId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CancelEventAsync:On-line event Cancelling:{eventGraphId}");
                     string subject = this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Request().Select("subject").GetAsync().Result.Subject;
                     await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line event Cancelled:{eventGraphId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CancelEventAsync:On-line event Cancelled:{eventGraphId}");
                     return true;
                 }
             }
             catch (Exception ex)
             {
-                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Exception:{ex.StackTrace}");
+                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Exception:{ex.Message}");
                 telemetryClient.TrackException(ewsExcption);
                 throw new Exception(ewsExcption.Message);
             }
@@ -196,7 +196,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.GraphEventId}");
+                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.Name}");
                 eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
                 var teamsEvent = new Event { };
@@ -210,7 +210,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     ContentType = Microsoft.Graph.BodyType.Html,
                     Content = this.GetEventBodyContent(eventEntity),
                 };
-                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.GraphEventId} with Body:{teamsEvent.Body.Content}");
+                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.Name} with Body:{teamsEvent.Body.Content}");
                 teamsEvent.Attendees = eventEntity.IsAutoRegister && eventEntity.Audience == (int)EventAudience.Private ?
                             await this.GetEventAttendeesTemplateAsync(eventEntity, telemetryClient) :
                             new List<Microsoft.Graph.Attendee>();
@@ -238,9 +238,9 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 if (eventEntity.NumberOfOccurrences > 1)
                 {
                     // Create recurring event.
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event Recurring:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event Recurring:{eventEntity?.Name}");
                     teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity, telemetryClient);
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Created event Recurring:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Created event Recurring:{eventEntity?.Name}");
                 }
 
                 if (this.isOnPremUser)
@@ -254,9 +254,9 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                             EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
                             Subject = teamsEvent.Subject,
                         };
-                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.GraphEventId} Online Meeting Creating");
+                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.Name}  Meeting Creating");
                         var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.GraphEventId} Creating Online Created");
+                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.Name} Meeting Created");
                         myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
                         myDecodedString = myDecodedString.Remove(0, 15);
                         myDecodedString = teamsEvent.Body.Content + " " + myDecodedString;
@@ -267,22 +267,22 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                     }
 
                     service = this.EWSService(userPrincipal, telemetryClient);
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Creating:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Creating:{eventEntity?.Name}");
                     this.CreateEWSEvent(telemetryClient, service, teamsEvent, myDecodedString);
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Created:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Created:{eventEntity?.Name}");
                     return teamsEvent;
                 }
                 else
                 {
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Creating:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Creating:{eventEntity?.Name}");
                     var cloudEvent = await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
-                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Created:{eventEntity?.GraphEventId}");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Created:{eventEntity?.Name}");
                     return cloudEvent;
                 }
             }
             catch (Exception ex)
             {
-                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Exception:{ex.StackTrace}");
+                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Message:{ex.Message} and Exception:{ex.StackTrace}");
                 telemetryClient.TrackException(ewsExcption);
                 throw new Exception(ewsExcption.Message);
             }
@@ -533,11 +533,10 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
             try
             {
                 telemetryClient.TrackTrace($"OnPrem Event:EWSService:creating EWS Client for {userPrincipal}");
-
                 var ewsClient = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
-                ewsClient.Credentials = new WebCredentials(this.serviceEmail, this.servicePass);
+                ewsClient.Credentials = new WebCredentials(this.serviceAccountEmail, this.serviceAccountPwd);
                 ewsClient.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userPrincipal);
-                ewsClient.AutodiscoverUrl(this.serviceEmail);
+                ewsClient.Url = new Uri("https://mail.qatartest309.com/EWS/Exchange.asmx");
                 telemetryClient.TrackTrace($"OnPrem Event:EWSService:EWS Client Created:{ewsClient}");
                 return ewsClient;
             }
