@@ -151,7 +151,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                telemetryClient.TrackTrace("CancelEventAsync CALLED");
+                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Canceling event:{eventGraphId}");
 
                 Item item;
                 ExchangeService service;
@@ -159,67 +159,30 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
                 ItemId eventId = eventGraphId;
                 var user = await this.delegatedGraphClient.Users[createdByUserId].Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
-
                 bool isCreatorOnPrem = this.delegatedGraphClient.Users[createdByUserId].Request().Select("onPremisesSyncEnabled").GetAsync().Result.OnPremisesSyncEnabled.HasValue;
-
                 if (isCreatorOnPrem)
                 {
-                    telemetryClient.TrackEvent("Creator is OnPrem");
-                    try
-                    {
-                        service = this.Service(userPrincipal, telemetryClient);
-                        telemetryClient.TrackEvent("Service creation SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Service creation FAIL. {ex.Message}"));
-                        return false;
-                    }
-
-                    try
-                    {
-                        item = Item.Bind(service, eventId);
-                        telemetryClient.TrackEvent("Item binding SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Item binding FAIL. {ex.Message}"));
-                        return false;
-                    }
-
-                    try
-                    {
-                        item.Delete(DeleteMode.MoveToDeletedItems);
-                        telemetryClient.TrackTrace($"{item.Subject} cancelled SUCCESS");
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"{item.Subject} cancelled FAIL. {ex.Message}"));
-                        return false;
-                    }
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-Prem event Cancelling:{eventGraphId}");
+                    service = this.EWSService(userPrincipal, telemetryClient);
+                    item = Item.Bind(service, eventId);
+                    item.Delete(DeleteMode.MoveToDeletedItems);
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-Prem event Cancelled:{eventGraphId}");
+                    return true;
                 }
                 else
                 {
-                    telemetryClient.TrackEvent("Creator is on Cloud");
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line event Cancelling:{eventGraphId}");
                     string subject = this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Request().Select("subject").GetAsync().Result.Subject;
-                    try
-                    {
-                        await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
-                        telemetryClient.TrackTrace($"{subject} cancelled SUCCESS");
-                        return true;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Cloud user cancellation FAIL. {ex.Message}"));
-                        return false;
-                    }
+                    await this.applicationBetaGraphClient.Users[createdByUserId].Events[eventGraphId].Cancel(comment).Request().PostAsync();
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line event Cancelled:{eventGraphId}");
+                    return true;
                 }
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"CancelEventAsync FAIL {ex.Message}"));
-                return false;
+                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Exception:{ex.StackTrace}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -233,7 +196,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                telemetryClient.TrackTrace("CreateEventAsync CALLED");
+                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.GraphEventId}");
                 eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
                 var teamsEvent = new Event { };
@@ -241,151 +204,87 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                 var user = await this.delegatedGraphClient.Me.Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
-
-                try
+                teamsEvent.Subject = eventEntity.Name;
+                teamsEvent.Body = new ItemBody
                 {
-                    teamsEvent.Subject = eventEntity.Name;
-                    teamsEvent.Body = new ItemBody
-                    {
-                        ContentType = Microsoft.Graph.BodyType.Html,
-                        Content = this.GetEventBodyContent(eventEntity, telemetryClient),
-                    };
-                    teamsEvent.Attendees = eventEntity.IsAutoRegister && eventEntity.Audience == (int)EventAudience.Private ?
-                                await this.GetEventAttendeesTemplateAsync(eventEntity, telemetryClient) :
-                                new List<Microsoft.Graph.Attendee>();
-                    teamsEvent.OnlineMeetingUrl = eventEntity.Type == (int)EventType.LiveEvent ? eventEntity.MeetingLink : null;
-                    teamsEvent.IsReminderOn = true;
-                    teamsEvent.Location = eventEntity.Type == (int)EventType.InPerson ? new Location
-                    {
-                        DisplayName = eventEntity.Venue,
-                    }
-                    : null;
-                    teamsEvent.AllowNewTimeProposals = false;
-                    teamsEvent.IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams;
-                    teamsEvent.OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown;
-                    teamsEvent.Start = new DateTimeTimeZone
-                    {
-                        DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
-                        TimeZone = TimeZoneInfo.Utc.Id,
-                    };
-                    teamsEvent.End = new DateTimeTimeZone
-                    {
-                        DateTime = eventEntity.StartDate.Value.Date.Add(
-                        new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
-                        TimeZone = TimeZoneInfo.Utc.Id,
-                    };
-                    if (eventEntity.NumberOfOccurrences > 1)
-                    {
-                        // Create recurring event.
-                        teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity, telemetryClient);
-                    }
-
-                    telemetryClient.TrackEvent("Event base creation SUCCESS");
+                    ContentType = Microsoft.Graph.BodyType.Html,
+                    Content = this.GetEventBodyContent(eventEntity),
+                };
+                telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event:{eventEntity?.GraphEventId} with Body:{teamsEvent.Body.Content}");
+                teamsEvent.Attendees = eventEntity.IsAutoRegister && eventEntity.Audience == (int)EventAudience.Private ?
+                            await this.GetEventAttendeesTemplateAsync(eventEntity, telemetryClient) :
+                            new List<Microsoft.Graph.Attendee>();
+                teamsEvent.OnlineMeetingUrl = eventEntity.Type == (int)EventType.LiveEvent ? eventEntity.MeetingLink : null;
+                teamsEvent.IsReminderOn = true;
+                teamsEvent.Location = eventEntity.Type == (int)EventType.InPerson ? new Location
+                {
+                    DisplayName = eventEntity.Venue,
                 }
-                catch (Exception ex)
+                : null;
+                teamsEvent.AllowNewTimeProposals = false;
+                teamsEvent.IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams;
+                teamsEvent.OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown;
+                teamsEvent.Start = new DateTimeTimeZone
                 {
-                    telemetryClient.TrackException(new Exception($"Event base creation FAIL {ex.Message}"));
-                    return null;
+                    DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
+                    TimeZone = TimeZoneInfo.Utc.Id,
+                };
+                teamsEvent.End = new DateTimeTimeZone
+                {
+                    DateTime = eventEntity.StartDate.Value.Date.Add(
+                    new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
+                    TimeZone = TimeZoneInfo.Utc.Id,
+                };
+                if (eventEntity.NumberOfOccurrences > 1)
+                {
+                    // Create recurring event.
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Creating event Recurring:{eventEntity?.GraphEventId}");
+                    teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity, telemetryClient);
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:Created event Recurring:{eventEntity?.GraphEventId}");
                 }
 
                 if (this.isOnPremUser)
                 {
-                    telemetryClient.TrackEvent("User is OnPrem");
-
                     string myDecodedString;
-
                     if (eventEntity.Type == (int)EventType.Teams)
                     {
-                        telemetryClient.TrackEvent("Creating event type TEAMS");
-                        try
+                        var onlineMeeting = new OnlineMeeting
                         {
-                            var onlineMeeting = new OnlineMeeting
-                            {
-                                StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
-                                EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
-                                Subject = "User Token Meeting",
-                            };
-
-                            var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
-                            myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
-                            myDecodedString = myDecodedString.Remove(0, 15);
-                            myDecodedString = teamsEvent.Body.Content + " " + myDecodedString;
-
-                            telemetryClient.TrackEvent("String decoding SUCCESS");
-                        }
-                        catch (Exception ex)
-                        {
-                            telemetryClient.TrackException(new Exception($"String decoding FAIL {ex.Message}"));
-                            return null;
-                        }
+                            StartDateTime = DateTimeOffset.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture),
+                            EndDateTime = DateTimeOffset.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture),
+                            Subject = teamsEvent.Subject,
+                        };
+                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.GraphEventId} Online Meeting Creating");
+                        var meeting = await this.delegatedGraphClient.Me.OnlineMeetings.Request().AddAsync(onlineMeeting);
+                        telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem event:{eventEntity?.GraphEventId} Creating Online Created");
+                        myDecodedString = HttpUtility.UrlDecode(meeting.JoinInformation.Content);
+                        myDecodedString = myDecodedString.Remove(0, 15);
+                        myDecodedString = teamsEvent.Body.Content + " " + myDecodedString;
                     }
                     else
                     {
-                        if (eventEntity.Type == (int)EventType.InPerson)
-                        {
-                            telemetryClient.TrackEvent("Creating event type InPerson");
-                        }
-
-                        if (eventEntity.Type == (int)EventType.LiveEvent)
-                        {
-                            telemetryClient.TrackEvent("Creating event type LiveEvent");
-                        }
-
-                        try
-                        {
-                            myDecodedString = teamsEvent.Body.Content;
-                            telemetryClient.TrackEvent("Body content loaded SUCCESS");
-                        }
-                        catch (Exception ex)
-                        {
-                            telemetryClient.TrackException(new Exception($"Body content loading FAIL {ex.Message}"));
-                            return null;
-                        }
+                        myDecodedString = teamsEvent.Body.Content;
                     }
 
-                    try
-                    {
-                        service = this.Service(userPrincipal, telemetryClient);
-                        telemetryClient.TrackEvent("Service creation SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Service creation FAIL. {ex.Message}"));
-                        return null;
-                    }
-
-                    try
-                    {
-                        this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, myDecodedString);
-                        telemetryClient.TrackTrace($"{teamsEvent.Subject} creation SUCCESS");
-                        return teamsEvent;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"OnPrem event creation FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    service = this.EWSService(userPrincipal, telemetryClient);
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Creating:{eventEntity?.GraphEventId}");
+                    this.CreateEWSEvent(telemetryClient, service, teamsEvent, myDecodedString);
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-prem Created:{eventEntity?.GraphEventId}");
+                    return teamsEvent;
                 }
                 else
                 {
-                    telemetryClient.TrackEvent("User is on Cloud");
-                    try
-                    {
-                        var cloudEvent = await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
-                        telemetryClient.TrackTrace($"{teamsEvent.Subject} creation SUCCESS");
-                        return cloudEvent;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Cloud event creation FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Creating:{eventEntity?.GraphEventId}");
+                    var cloudEvent = await this.delegatedGraphClient.Me.Events.Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").AddAsync(teamsEvent);
+                    telemetryClient?.TrackTrace($"Teams Event:CreateEventAsync:On-line Created:{eventEntity?.GraphEventId}");
+                    return cloudEvent;
                 }
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"CreateEventAsync FAIL. {ex.Message}"));
-                return null;
+                var ewsExcption = new Exception($"Teams Event:CreateEventAsync:Failed with Exception:{ex.StackTrace}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -399,7 +298,7 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         {
             try
             {
-                telemetryClient.TrackTrace("UpdateEventAsync CALLED");
+                telemetryClient?.TrackTrace($"Teams Event:UpdateEventAsync:updating event:{eventEntity?.GraphEventId}");
                 eventEntity = eventEntity ?? throw new ArgumentNullException(nameof(eventEntity), "Event details cannot be null");
 
                 ItemId eventId = eventEntity.GraphEventId;
@@ -410,97 +309,61 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
 
                 var user = await this.delegatedGraphClient.Users[eventEntity.CreatedBy].Request().GetAsync();
                 string userPrincipal = user.UserPrincipalName;
-
-                try
+                teamsEvent.Subject = eventEntity.Name;
+                teamsEvent.Body = new ItemBody
                 {
-                    teamsEvent.Subject = eventEntity.Name;
-                    teamsEvent.Body = new ItemBody
-                    {
-                        ContentType = Microsoft.Graph.BodyType.Html,
-                        Content = this.GetEventBodyContent(eventEntity, telemetryClient),
-                    };
-                    teamsEvent.Attendees = await this.GetEventAttendeesTemplateAsync(eventEntity, telemetryClient);
-                    teamsEvent.OnlineMeetingUrl = eventEntity.Type == (int)EventType.LiveEvent ? eventEntity.MeetingLink : null;
-                    teamsEvent.IsReminderOn = true;
-                    teamsEvent.Location = eventEntity.Type == (int)EventType.InPerson ? new Location
-                    {
-                        DisplayName = eventEntity.Venue,
-                    }
-                    : null;
-                    teamsEvent.AllowNewTimeProposals = false;
-                    teamsEvent.IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams;
-                    teamsEvent.OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown;
-                    teamsEvent.Start = new DateTimeTimeZone
-                    {
-                        DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
-                        TimeZone = TimeZoneInfo.Utc.Id,
-                    };
-                    teamsEvent.End = new DateTimeTimeZone
-                    {
-                        DateTime = eventEntity.StartDate.Value.Date.Add(
-                        new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
-                        TimeZone = TimeZoneInfo.Utc.Id,
-                    };
-                    if (eventEntity.NumberOfOccurrences > 1)
-                    {
-                        teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity, telemetryClient);
-                    }
-
-                    telemetryClient.TrackEvent("Event base update SUCCESS");
+                    ContentType = Microsoft.Graph.BodyType.Html,
+                    Content = this.GetEventBodyContent(eventEntity),
+                };
+                telemetryClient.TrackTrace($"Teams Event:UpdateEventAsync:updating event:{eventEntity.GraphEventId} with body:{teamsEvent.Body}");
+                teamsEvent.Attendees = await this.GetEventAttendeesTemplateAsync(eventEntity, telemetryClient);
+                teamsEvent.OnlineMeetingUrl = eventEntity.Type == (int)EventType.LiveEvent ? eventEntity.MeetingLink : null;
+                teamsEvent.IsReminderOn = true;
+                teamsEvent.Location = eventEntity.Type == (int)EventType.InPerson ? new Location
+                {
+                    DisplayName = eventEntity.Venue,
                 }
-                catch (Exception ex)
+                : null;
+                teamsEvent.AllowNewTimeProposals = false;
+                teamsEvent.IsOnlineMeeting = eventEntity.Type == (int)EventType.Teams;
+                teamsEvent.OnlineMeetingProvider = eventEntity.Type == (int)EventType.Teams ? OnlineMeetingProviderType.TeamsForBusiness : OnlineMeetingProviderType.Unknown;
+                teamsEvent.Start = new DateTimeTimeZone
                 {
-                    telemetryClient.TrackException(new Exception($"Event base update FAIL {ex.Message}"));
-                    return null;
+                    DateTime = eventEntity.StartDate?.ToString("s", CultureInfo.InvariantCulture),
+                    TimeZone = TimeZoneInfo.Utc.Id,
+                };
+                teamsEvent.End = new DateTimeTimeZone
+                {
+                    DateTime = eventEntity.StartDate.Value.Date.Add(
+                    new TimeSpan(eventEntity.EndTime.Hour, eventEntity.EndTime.Minute, eventEntity.EndTime.Second)).ToString("s", CultureInfo.InvariantCulture),
+                    TimeZone = TimeZoneInfo.Utc.Id,
+                };
+                if (eventEntity.NumberOfOccurrences > 1)
+                {
+                    teamsEvent = this.GetRecurringEventTemplate(teamsEvent, eventEntity, telemetryClient);
                 }
 
                 if (isCreatedByOnPremUser)
                 {
-                    telemetryClient.TrackEvent("Creator is OnPrem");
-
-                    try
-                    {
-                        service = this.Service(userPrincipal, telemetryClient);
-                        telemetryClient.TrackEvent("Service creation SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Service creation FAIL. {ex.Message}"));
-                        return null;
-                    }
-
-                    try
-                    {
-                        this.EWS_CRUD_Event(telemetryClient, service, teamsEvent, eventId);
-                        telemetryClient.TrackTrace($"{teamsEvent.Subject} update SUCCESS");
-                        return teamsEvent;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"OnPrem event update FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    telemetryClient.TrackTrace($"Teams Event:UpdateEventAsync:OnPrem event updating:{eventEntity.GraphEventId}");
+                    service = this.EWSService(userPrincipal, telemetryClient);
+                    this.UpdateEWSEvent(telemetryClient, service, teamsEvent, eventId);
+                    telemetryClient.TrackTrace($"Teams Event:UpdateEventAsync:OnPrem event Updated:{eventEntity.GraphEventId}");
+                    return teamsEvent;
                 }
                 else
                 {
-                    telemetryClient.TrackEvent("User is on Cloud");
-                    try
-                    {
-                        var cloudEvent = await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
-                        telemetryClient.TrackTrace($"{teamsEvent.Subject} update SUCCESS");
-                        return cloudEvent;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Cloud event update FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    telemetryClient.TrackTrace($"On-line Event:UpdateEventAsync:On-line event updating:{eventEntity.GraphEventId}");
+                    var cloudEvent = await this.applicationGraphClient.Users[eventEntity.CreatedBy].Events[eventEntity.GraphEventId].Request().Header("Prefer", $"outlook.timezone=\"{TimeZoneInfo.Utc.Id}\"").UpdateAsync(teamsEvent);
+                    telemetryClient.TrackTrace($"On-line Event:UpdateEventAsync:On-line event updated:{eventEntity.GraphEventId}");
+                    return cloudEvent;
                 }
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"UpdateEventAsync FAIL. {ex.Message}"));
-                return null;
+                var ewsExcption = new Exception($"OnPrem Event:EWSService:Failed with Exception:{ex.StackTrace}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -642,29 +505,20 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// Get the event body content based on event type
         /// </summary>
         /// <param name="eventEntity">The event details</param>
-        /// <param name="telemetryClient">Telementry.</param>
         /// <returns>Returns </returns>
-        private string GetEventBodyContent(EventEntity eventEntity, TelemetryClient telemetryClient)
+        private string GetEventBodyContent(EventEntity eventEntity)
         {
-            try
+            string eventBody = string.Empty;
+            switch ((EventType)eventEntity.Type)
             {
-                telemetryClient.TrackTrace("GetEventBodyContent CALLED");
-                switch ((EventType)eventEntity.Type)
-                {
-                    case EventType.InPerson:
-                        return HttpUtility.HtmlEncode(eventEntity.Description);
+                case EventType.InPerson:
+                    return HttpUtility.HtmlEncode(eventEntity.Description);
 
-                    case EventType.LiveEvent:
-                        return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{this.localizer.GetString("CalendarEventLiveEventURLText", $"<a href='{eventEntity.MeetingLink}'>{eventEntity.MeetingLink}</a>")}";
+                case EventType.LiveEvent:
+                    return $"{HttpUtility.HtmlEncode(eventEntity.Description)}<br/><br/>{this.localizer.GetString("CalendarEventLiveEventURLText", $"<a href='{eventEntity.MeetingLink}'>{eventEntity.MeetingLink}</a>")}";
 
-                    default:
-                        return HttpUtility.HtmlEncode(eventEntity.Description);
-                }
-            }
-            catch (Exception ex)
-            {
-                telemetryClient.TrackException(new Exception($"GetEventBodyContent FAIL {ex.Message}"));
-                return null;
+                default:
+                    return HttpUtility.HtmlEncode(eventEntity.Description);
             }
         }
 
@@ -674,24 +528,24 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="userPrincipal">Email ID of the user that is currently logged in.</param>
         /// <param name="telemetryClient">Telementry.</param>
         /// <returns>Created service.</returns>
-        private ExchangeService Service(string userPrincipal, TelemetryClient telemetryClient)
+        private ExchangeService EWSService(string userPrincipal, TelemetryClient telemetryClient)
         {
             try
             {
-                telemetryClient.TrackTrace("Service function CALLED");
+                telemetryClient.TrackTrace($"OnPrem Event:EWSService:creating EWS Client for {userPrincipal}");
 
                 var ewsClient = new ExchangeService(ExchangeVersion.Exchange2013_SP1);
                 ewsClient.Credentials = new WebCredentials(this.serviceEmail, this.servicePass);
                 ewsClient.ImpersonatedUserId = new ImpersonatedUserId(ConnectingIdType.SmtpAddress, userPrincipal);
-                ewsClient.Url = new Uri("https://owa.hmc.org.qa/EWS/Exchange.asmx");
-
-                telemetryClient.TrackTrace("Service creation SUCCESS");
+                ewsClient.AutodiscoverUrl(this.serviceEmail);
+                telemetryClient.TrackTrace($"OnPrem Event:EWSService:EWS Client Created:{ewsClient}");
                 return ewsClient;
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"Service function FAIL {ex.Message}"));
-                return null;
+                var ewsExcption = new Exception($"OnPrem Event:EWSService:Failed with Exception:{ex.StackTrace}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -703,44 +557,24 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="teamsEvent">Details that need to be filled in the event.</param>
         /// <param name="body">Body of the event.</param>
         /// <returns>Id of the event created</returns>
-        private ItemId EWS_CRUD_Event(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, string body)
+        private ItemId CreateEWSEvent(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, string body)
         {
             try
             {
-                telemetryClient.TrackTrace("EWS_Event_Creation CALLED");
+                telemetryClient.TrackTrace($"OnPrem Event:CreateEWSEvent:Entering into UpsertEWSEvent");
                 Appointment appointment;
-
                 CreateUpdate createEvent = CreateUpdate.CreateAppointment;
-                try
-                {
-                    appointment = this.TeamAppointment(teamsEvent, createEvent, service, body, telemetryClient);
-                    telemetryClient.TrackEvent("Appointment creation SUCCESS");
-                }
-                catch (Exception ex)
-                {
-                    telemetryClient.TrackException(new Exception($"Appointment creation FAIL. {ex.Message}"));
-                    return null;
-                }
-
-                try
-                {
-                    Item item = Item.Bind(service, appointment.Id, new PropertySet(ItemSchema.Subject));
-                    teamsEvent.Id = item.Id.ToString();
-
-                    ItemId eventId = appointment.Id;
-                    telemetryClient.TrackTrace("EWS_Event_Creation SUCCESS");
-                    return eventId;
-                }
-                catch (Exception ex)
-                {
-                    telemetryClient.TrackException(new Exception($"Item binding FAIL. {ex.Message}"));
-                    return null;
-                }
+                appointment = this.UpsertEWSAppointment(teamsEvent, createEvent, service, body, telemetryClient);
+                Item item = Item.Bind(service, appointment.Id, new PropertySet(ItemSchema.Subject));
+                teamsEvent.Id = item.Id.ToString();
+                ItemId eventId = appointment.Id;
+                return eventId;
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"EWS_Event_Creation FAIL. {ex.Message}"));
-                return null;
+                var ewsExcption = new Exception($"OnPrem Event:CreateEWSEvent:Fail with Exception{ex.Message}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -751,19 +585,20 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="service">Exchange service that will be used to update event.</param>
         /// <param name="teamsEvent">Details that will updated in the event</param>
         /// <param name="eventId">Id of the event that need to me modified.</param>
-        private void EWS_CRUD_Event(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, ItemId eventId)
+        private void UpdateEWSEvent(TelemetryClient telemetryClient, ExchangeService service, Event teamsEvent, ItemId eventId)
         {
-            telemetryClient.TrackTrace("EWS_Event_Update CALLED");
+            telemetryClient.TrackTrace($"OnPrem Event:UpdateEWSEvent:Entering into UpsertEWSEvent");
             CreateUpdate updateEvent = CreateUpdate.UpdateAppointment;
 
             try
             {
-                this.TeamAppointment(teamsEvent, updateEvent, service, eventId.ToString(), telemetryClient);
-                telemetryClient.TrackTrace("EWS_Event_Update SUCCESS");
+                this.UpsertEWSAppointment(teamsEvent, updateEvent, service, eventId.ToString(), telemetryClient);
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackException(new Exception($"EWS_Event_Update FAIL. {ex.Message}"));
+                var ewsExcption = new Exception($"OnPrem Event:UpdateEWSEvent: Fail with Exception{ex.Message}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
 
@@ -775,117 +610,65 @@ namespace Microsoft.Teams.Apps.EmployeeTraining.Helpers
         /// <param name="service">Exchange service that will be used to delete event.</param>
         /// <param name="idOrBody"> For u[dating appointment an ID will be passed and for creating appointment body will be passed</param>
         /// <param name="telemetryClient">Telementry.</param>
-        private Appointment TeamAppointment(Event teamsEvent, CreateUpdate createUpdate, ExchangeService service, string idOrBody, TelemetryClient telemetryClient)
+        private Appointment UpsertEWSAppointment(Event teamsEvent, CreateUpdate createUpdate, ExchangeService service, string idOrBody, TelemetryClient telemetryClient)
         {
             try
             {
-                telemetryClient.TrackTrace("TeamAppointment CALLED");
+                telemetryClient.TrackTrace($"OnPrem Event:UpsertEWSAppointment: with event{teamsEvent.Id}");
 
                 if (createUpdate.Equals(CreateUpdate.CreateAppointment))
                 {
-                    try
+                    this.EventAppointment = new Appointment(service)
                     {
-                        this.EventAppointment = new Appointment(service);
-                        this.EventAppointment.Body = idOrBody;
-                        telemetryClient.TrackEvent("Appointment CREATE base SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Appointment CREATE base FAIL. {ex.Message}"));
-                        return null;
-                    }
+                        Body = idOrBody,
+                    };
                 }
                 else
                 {
-                    try
-                    {
-                        ItemId eventId = new ItemId(idOrBody);
-                        this.EventAppointment = Appointment.Bind(service, eventId);
-                        this.EventAppointment.Body = teamsEvent.Body.Content;
-                        telemetryClient.TrackEvent("Appointment UPDATE base SUCCESS");
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Appointment UPDATE base FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    ItemId eventId = new ItemId(idOrBody);
+                    this.EventAppointment = Appointment.Bind(service, eventId);
+                    this.EventAppointment.Body = teamsEvent.Body.Content;
                 }
 
-                try
+                this.EventAppointment.Subject = teamsEvent.Subject;
+                this.EventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
+                this.EventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
+                this.EventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
+                this.EventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.DisplayName : string.Empty;
+                foreach (var attendee in teamsEvent.Attendees)
                 {
-                    this.EventAppointment.Subject = teamsEvent.Subject;
-                    this.EventAppointment.Body.BodyType = Exchange.WebServices.Data.BodyType.HTML;
-                    this.EventAppointment.Start = DateTime.Parse(teamsEvent.Start.DateTime, CultureInfo.InvariantCulture);
-                    this.EventAppointment.End = DateTime.Parse(teamsEvent.End.DateTime, CultureInfo.InvariantCulture);
-                    this.EventAppointment.Location = teamsEvent.Location != null ? teamsEvent.Location.DisplayName : string.Empty;
-
-                    try
+                    if (attendee.Type == 0)
                     {
-                        foreach (var attendee in teamsEvent.Attendees)
-                        {
-                            if (attendee.Type == 0)
-                            {
-                                this.EventAppointment.RequiredAttendees.Add(attendee.EmailAddress.Address);
-                            }
-                            else
-                            {
-                                this.EventAppointment.OptionalAttendees.Add(attendee.EmailAddress.Address);
-                            }
-                        }
-
-                        telemetryClient.TrackEvent("Event attendees SUCCESS");
+                        this.EventAppointment.RequiredAttendees.Add(attendee.EmailAddress.Address);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        telemetryClient.TrackException(new Exception($"Event attendees FAIL. {ex.Message}"));
-                        return null;
+                        this.EventAppointment.OptionalAttendees.Add(attendee.EmailAddress.Address);
                     }
+                }
 
-                    this.EventAppointment.ReminderDueBy = DateTime.Now;
-                    telemetryClient.TrackEvent("Appointment data SUCCESS");
-                }
-                catch (Exception ex)
-                {
-                    telemetryClient.TrackException(new Exception($"Appointment data FAIL. {ex.Message}"));
-                    return null;
-                }
+                this.EventAppointment.ReminderDueBy = DateTime.Now;
 
                 if (createUpdate.Equals(CreateUpdate.CreateAppointment))
                 {
-                    try
-                    {
-                        this.EventAppointment.Save(SendInvitationsMode.SendToAllAndSaveCopy);
-                        telemetryClient.TrackTrace($"TeamAppointment CREATE SUCCESS");
-                        return this.EventAppointment;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Appointment CREATE FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    this.EventAppointment.Save(SendInvitationsMode.SendToAllAndSaveCopy);
+                    telemetryClient.TrackTrace($"OnPrem Event:UpsertEWSAppointment: with  New event :{this.EventAppointment.Id}");
+                    return this.EventAppointment;
                 }
                 else
                 {
-                    try
-                    {
-                        SendInvitationsOrCancellationsMode mode = this.EventAppointment.IsMeeting ?
-                        SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy : SendInvitationsOrCancellationsMode.SendToNone;
-
-                        this.EventAppointment.Update(ConflictResolutionMode.AlwaysOverwrite);
-                        telemetryClient.TrackTrace($"TeamAppointment UPDATE SUCCESS");
-                        return this.EventAppointment;
-                    }
-                    catch (Exception ex)
-                    {
-                        telemetryClient.TrackException(new Exception($"Appointment UPDATE FAIL. {ex.Message}"));
-                        return null;
-                    }
+                    SendInvitationsOrCancellationsMode mode = this.EventAppointment.IsMeeting ?
+                    SendInvitationsOrCancellationsMode.SendToAllAndSaveCopy : SendInvitationsOrCancellationsMode.SendToNone;
+                    this.EventAppointment.Update(ConflictResolutionMode.AlwaysOverwrite);
+                    telemetryClient.TrackTrace($"OnPrem Event:UpsertEWSAppointment: with  Event to Update :{this.EventAppointment.Id}");
+                    return this.EventAppointment;
                 }
             }
             catch (Exception ex)
             {
-                telemetryClient.TrackEvent($"TeamAppointment FAIL. {ex.Message}");
-                return null;
+                var ewsExcption = new Exception($"OnPrem Event:UpsertEWSAppointment: Fail with Exception{ex.Message}");
+                telemetryClient.TrackException(ewsExcption);
+                throw new Exception(ewsExcption.Message);
             }
         }
     }
